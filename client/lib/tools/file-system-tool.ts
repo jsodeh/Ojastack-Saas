@@ -1,4 +1,4 @@
-import { ToolDefinition, ToolExecutionResult, ToolExecutionContext } from '../tool-system';
+import { ToolDefinition, ToolExecutionResult, ToolExecutionContext } from '../tool-types';
 
 export interface FileSystemResult {
   operation: string;

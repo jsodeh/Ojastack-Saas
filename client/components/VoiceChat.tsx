@@ -18,7 +18,7 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle,
-  Waveform,
+  Activity,
 } from "lucide-react";
 import { voiceService, type VoiceSettings, type VoiceModel } from "@/lib/voice-service";
 

@@ -1,4 +1,4 @@
-import { ToolDefinition, ToolExecutionResult, ToolExecutionContext } from '../tool-system';
+import { ToolDefinition, ToolExecutionResult, ToolExecutionContext } from '../tool-types';
 import { WebSearchTool } from './web-search-tool';
 import { WeatherTool } from './weather-tool';
 import { CalculatorTool } from './calculator-tool';
@@ -70,7 +70,7 @@ export class EnhancedToolRegistry {
     context: ToolExecutionContext
   ): Promise<ToolExecutionResult> {
     const tool = this.tools.get(toolId);
-    
+
     if (!tool) {
       return {
         success: false,
@@ -101,7 +101,7 @@ export class EnhancedToolRegistry {
     try {
       // Execute the tool
       const result = await tool.execute(parameters, context);
-      
+
       // Add tool metadata to result
       if (result.success && result.metadata) {
         result.metadata.tool_id = toolId;
@@ -139,7 +139,7 @@ export class EnhancedToolRegistry {
     // Check parameter types and constraints
     for (const param of definition.parameters) {
       const value = parameters[param.name];
-      
+
       if (value !== undefined && value !== null) {
         // Type validation
         if (!this.validateParameterType(value, param.type)) {
@@ -214,7 +214,7 @@ export class EnhancedToolRegistry {
   searchTools(query: string): ToolDefinition[] {
     const lowerQuery = query.toLowerCase();
     return Array.from(this.toolDefinitions.values()).filter(
-      tool => 
+      tool =>
         tool.name.toLowerCase().includes(lowerQuery) ||
         tool.description.toLowerCase().includes(lowerQuery) ||
         tool.id.toLowerCase().includes(lowerQuery)
@@ -236,10 +236,10 @@ export class EnhancedToolRegistry {
     for (const tool of this.toolDefinitions.values()) {
       // Count by category
       stats.categories[tool.category] = (stats.categories[tool.category] || 0) + 1;
-      
+
       // Count by provider
       stats.providers[tool.provider] = (stats.providers[tool.provider] || 0) + 1;
-      
+
       // Count enabled/disabled
       if (tool.enabled) {
         stats.enabled_tools++;
@@ -306,24 +306,24 @@ export class EnhancedToolRegistry {
     }>
   ): Promise<ToolExecutionResult[]> {
     const results: ToolExecutionResult[] = [];
-    
+
     // Execute tools in parallel with concurrency limit
     const concurrencyLimit = 5;
     const chunks = this.chunkArray(requests, concurrencyLimit);
-    
+
     for (const chunk of chunks) {
       const chunkResults = await Promise.all(
-        chunk.map(request => 
+        chunk.map(request =>
           this.executeTool(
             request.toolId,
             request.parameters,
-            request.context || this.createExecutionContext()
+            request.context || this.createExecutionContext('default', 'default')
           )
         )
       );
       results.push(...chunkResults);
     }
-    
+
     return results;
   }
 
@@ -373,22 +373,23 @@ export class EnhancedToolRegistry {
       }
 
       for (const [toolId, toolConfig] of Object.entries(config.tools)) {
-        if (this.toolDefinitions.has(toolId)) {
+        if (this.toolDefinitions.has(toolId) && typeof toolConfig === 'object' && toolConfig !== null) {
           const definition = this.toolDefinitions.get(toolId)!;
-          
+          const configObj = toolConfig as any;
+
           // Update configuration
-          if (toolConfig.configuration) {
+          if (configObj.configuration && typeof configObj.configuration === 'object') {
             definition.configuration = {
               ...definition.configuration,
-              ...toolConfig.configuration,
+              ...configObj.configuration,
             };
           }
-          
+
           // Update enabled status
-          if (typeof toolConfig.enabled === 'boolean') {
-            definition.enabled = toolConfig.enabled;
+          if (typeof configObj.enabled === 'boolean') {
+            definition.enabled = configObj.enabled;
           }
-          
+
           definition.updated_at = new Date().toISOString();
         }
       }

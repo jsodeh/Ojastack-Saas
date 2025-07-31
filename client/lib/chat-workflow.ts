@@ -1,4 +1,4 @@
-import { n8nService } from "./n8n-integration";
+import { n8nService } from "./n8n-service";
 import { supabase } from "./supabase";
 
 export interface ChatWorkflowRequest {

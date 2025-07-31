@@ -15,6 +15,7 @@ import {
   Loader2,
   Volume2,
   VolumeX,
+  Mic,
 } from "lucide-react";
 import { streamingChatService } from "@/lib/streaming-chat";
 

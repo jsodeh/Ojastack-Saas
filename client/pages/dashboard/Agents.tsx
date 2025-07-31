@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Bot, MessageSquare, Settings, Play, Pause, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Bot, Settings, Play, Pause, Trash2, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import CreateAgentDialog from "@/components/dashboard/CreateAgentDialog";
+import TemplateGallery from "@/components/templates/TemplateGallery";
 
 interface Agent {
   id: string;
@@ -156,27 +158,45 @@ export default function Agents() {
         </div>
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="h-4 w-4 mr-2" />
-          Create Agent
+          Create Custom Agent
         </Button>
       </div>
 
-      {agents.length === 0 ? (
-        <Card className="text-center py-12">
-          <CardContent>
-            <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No agents yet</h3>
-            <p className="text-muted-foreground mb-4">
-              Create your first AI agent to start automating customer interactions
-            </p>
-            <Button onClick={() => setCreateDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Create Your First Agent
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {agents.map((agent) => (
+      <Tabs defaultValue="templates" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="templates" className="flex items-center">
+            <Sparkles className="h-4 w-4 mr-2" />
+            Templates
+          </TabsTrigger>
+          <TabsTrigger value="my-agents" className="flex items-center">
+            <Bot className="h-4 w-4 mr-2" />
+            My Agents ({agents.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates">
+          <TemplateGallery />
+        </TabsContent>
+
+        <TabsContent value="my-agents">
+          <div className="space-y-6">
+            {agents.length === 0 ? (
+              <Card className="text-center py-12">
+                <CardContent>
+                  <Bot className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No agents yet</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Create your first AI agent to start automating customer interactions
+                  </p>
+                  <Button onClick={() => setCreateDialogOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Agent
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {agents.map((agent) => (
             <Card key={agent.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
@@ -264,8 +284,11 @@ export default function Agents() {
               </CardContent>
             </Card>
           ))}
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
 
       <CreateAgentDialog
         open={createDialogOpen}

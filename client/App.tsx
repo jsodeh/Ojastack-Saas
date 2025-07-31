@@ -21,6 +21,8 @@ import Demo from "./pages/Demo";
 import Integrations from "./pages/Integrations";
 import API from "./pages/API";
 import HelpCenter from "./pages/HelpCenter";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import DashboardOverview from "./pages/dashboard/Overview";
 import InteractiveDemo from "./pages/dashboard/InteractiveDemo";
 import AgentsPage from "./pages/dashboard/Agents";
@@ -33,6 +35,12 @@ import IntegrationConfig from "./pages/dashboard/IntegrationConfig";
 import ProfileSettings from "./pages/dashboard/ProfileSettings";
 import WidgetContainer from "./components/WidgetContainer";
 import ErrorBoundary from "./components/ErrorBoundary";
+import VideoTestingDashboard from "./components/VideoTestingDashboard";
+import VideoTest from "./pages/dashboard/VideoTest";
+import MultimodalTest from "./pages/dashboard/MultimodalTest";
+import WorkflowTest from "./pages/dashboard/WorkflowTest";
+import AgentCreationWizard from "./components/agent-creation/AgentCreationWizard";
+import KnowledgeBaseManager from "./components/knowledge-base/KnowledgeBaseManager";
 
 const queryClient = new QueryClient();
 
@@ -94,6 +102,8 @@ const App = () => (
             <Route path="/integrations" element={<Integrations />} />
             <Route path="/api" element={<API />} />
             <Route path="/help" element={<HelpCenter />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             {/* Auth routes (redirect to dashboard if logged in) */}
             <Route
@@ -217,6 +227,46 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <ProfileSettings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/video-test"
+              element={
+                <ProtectedRoute>
+                  <VideoTest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/multimodal-test"
+              element={
+                <ProtectedRoute>
+                  <MultimodalTest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/workflow-test"
+              element={
+                <ProtectedRoute>
+                  <WorkflowTest />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/agents/create/:templateId"
+              element={
+                <ProtectedRoute>
+                  <AgentCreationWizard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/knowledge-bases"
+              element={
+                <ProtectedRoute>
+                  <KnowledgeBaseManager />
                 </ProtectedRoute>
               }
             />

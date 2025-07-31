@@ -1,75 +1,19 @@
-import { EnhancedToolRegistry } from './tools/enhanced-tool-registry';
+import { 
+  ToolParameter, 
+  ToolDefinition, 
+  ToolCall, 
+  ToolExecutionContext, 
+  ToolExecutionResult 
+} from './tool-types';
 
-export interface ToolParameter {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
-  description: string;
-  required: boolean;
-  default?: any;
-  enum?: string[];
-  properties?: Record<string, ToolParameter>;
-  // Enhanced validation properties
-  min_length?: number;
-  max_length?: number;
-  minimum?: number;
-  maximum?: number;
-}
-
-export interface ToolDefinition {
-  id: string;
-  name: string;
-  description: string;
-  category: 'search' | 'data' | 'communication' | 'automation' | 'utility';
-  provider: 'built-in' | 'n8n' | 'custom' | 'api';
-  version: string;
-  parameters: ToolParameter[];
-  configuration: {
-    endpoint?: string;
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    headers?: Record<string, string>;
-    authentication?: {
-      type: 'none' | 'api_key' | 'bearer' | 'basic';
-      key?: string;
-      value?: string;
-    };
-    timeout?: number;
-    retries?: number;
-  };
-  enabled: boolean;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ToolCall {
-  id: string;
-  tool_id: string;
-  conversation_id: string;
-  message_id?: string;
-  parameters: Record<string, any>;
-  result?: any;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'timeout';
-  error_message?: string;
-  execution_time?: number;
-  created_at: string;
-  completed_at?: string;
-}
-
-export interface ToolExecutionContext {
-  conversation_id: string;
-  agent_id: string;
-  user_id: string;
-  customer_id: string;
-  message_context: string;
-  variables: Record<string, any>;
-}
-
-export interface ToolExecutionResult {
-  success: boolean;
-  result?: any;
-  error?: string;
-  execution_time: number;
-  metadata?: Record<string, any>;
-}
+// Re-export types for backward compatibility
+export type {
+  ToolParameter,
+  ToolDefinition,
+  ToolCall,
+  ToolExecutionContext,
+  ToolExecutionResult
+};
 
 /**
  * Tool System
@@ -80,11 +24,21 @@ export class ToolSystem {
   private executionQueue: Map<string, ToolCall> = new Map();
   private executionHistory: ToolCall[] = [];
 
-  private enhancedToolRegistry: EnhancedToolRegistry;
+  private enhancedToolRegistry: any; // Will be initialized lazily
 
   constructor() {
-    this.enhancedToolRegistry = new EnhancedToolRegistry();
     this.initializeBuiltInTools();
+  }
+
+  /**
+   * Get enhanced tool registry (lazy initialization)
+   */
+  private async getEnhancedToolRegistry() {
+    if (!this.enhancedToolRegistry) {
+      const { EnhancedToolRegistry } = await import('./tools/enhanced-tool-registry');
+      this.enhancedToolRegistry = new EnhancedToolRegistry();
+    }
+    return this.enhancedToolRegistry;
   }
 
   /**
@@ -227,14 +181,27 @@ export class ToolSystem {
       this.tools.set(tool.id, tool);
     });
 
-    // Add enhanced tools
-    const enhancedTools = this.enhancedToolRegistry.getToolDefinitions();
-    enhancedTools.forEach(tool => {
-      // Override basic tools with enhanced versions
-      this.tools.set(tool.id, tool);
-    });
+    // Add enhanced tools (async initialization)
+    this.initializeEnhancedTools();
 
-    console.log(`🔧 Initialized ${builtInTools.length} built-in tools and ${enhancedTools.length} enhanced tools`);
+    console.log(`🔧 Initialized ${builtInTools.length} built-in tools`);
+  }
+
+  /**
+   * Initialize enhanced tools asynchronously
+   */
+  private async initializeEnhancedTools() {
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      const enhancedTools = enhancedRegistry.getToolDefinitions();
+      enhancedTools.forEach(tool => {
+        // Override basic tools with enhanced versions
+        this.tools.set(tool.id, tool);
+      });
+      console.log(`🔧 Initialized ${enhancedTools.length} enhanced tools`);
+    } catch (error) {
+      console.warn('Could not load enhanced tools:', error);
+    }
   }
 
   /**
@@ -386,25 +353,30 @@ export class ToolSystem {
     context: ToolExecutionContext
   ): Promise<any> {
     // Try enhanced tools first
-    const enhancedContext = this.enhancedToolRegistry.createExecutionContext(
-      context.user_id,
-      context.conversation_id,
-      {
-        agent_id: context.agent_id,
-        customer_id: context.customer_id,
-        message_context: context.message_context,
-        variables: context.variables,
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      const enhancedContext = enhancedRegistry.createExecutionContext(
+        context.user_id,
+        context.conversation_id,
+        {
+          agent_id: context.agent_id,
+          customer_id: context.customer_id,
+          message_context: context.message_context,
+          variables: context.variables,
+        }
+      );
+
+      const enhancedResult = await enhancedRegistry.executeTool(
+        tool.id,
+        parameters,
+        enhancedContext
+      );
+
+      if (enhancedResult.success) {
+        return enhancedResult.result || enhancedResult.data;
       }
-    );
-
-    const enhancedResult = await this.enhancedToolRegistry.executeTool(
-      tool.id,
-      parameters,
-      enhancedContext
-    );
-
-    if (enhancedResult.success) {
-      return enhancedResult.result;
+    } catch (error) {
+      console.warn('Enhanced tool execution failed, falling back to basic tools:', error);
     }
 
     // Fallback to basic tools
@@ -609,7 +581,7 @@ export class ToolSystem {
   /**
    * Get tool statistics
    */
-  getToolStatistics() {
+  async getToolStatistics() {
     const totalTools = this.tools.size;
     const enabledTools = this.getEnabledTools().length;
     const totalExecutions = this.executionHistory.length;
@@ -619,7 +591,13 @@ export class ToolSystem {
       : 0;
 
     // Get enhanced tool stats
-    const enhancedStats = this.enhancedToolRegistry.getToolStats();
+    let enhancedStats = {};
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      enhancedStats = enhancedRegistry.getToolStats();
+    } catch (error) {
+      console.warn('Could not get enhanced tool stats:', error);
+    }
 
     return {
       total_tools: totalTools,
@@ -636,8 +614,20 @@ export class ToolSystem {
   /**
    * Search tools using enhanced search capabilities
    */
-  searchTools(query: string): ToolDefinition[] {
-    return this.enhancedToolRegistry.searchTools(query);
+  async searchTools(query: string): Promise<ToolDefinition[]> {
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      return enhancedRegistry.searchTools(query);
+    } catch (error) {
+      // Fallback to basic search
+      const lowerQuery = query.toLowerCase();
+      return Array.from(this.tools.values()).filter(
+        tool =>
+          tool.name.toLowerCase().includes(lowerQuery) ||
+          tool.description.toLowerCase().includes(lowerQuery) ||
+          tool.id.toLowerCase().includes(lowerQuery)
+      );
+    }
   }
 
   /**
@@ -650,43 +640,64 @@ export class ToolSystem {
       context: ToolExecutionContext;
     }>
   ): Promise<ToolExecutionResult[]> {
-    const enhancedRequests = requests.map(request => ({
-      toolId: request.toolId,
-      parameters: request.parameters,
-      context: this.enhancedToolRegistry.createExecutionContext(
-        request.context.user_id,
-        request.context.conversation_id,
-        {
-          agent_id: request.context.agent_id,
-          customer_id: request.context.customer_id,
-          message_context: request.context.message_context,
-          variables: request.context.variables,
-        }
-      ),
-    }));
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      const enhancedRequests = requests.map(request => ({
+        toolId: request.toolId,
+        parameters: request.parameters,
+        context: enhancedRegistry.createExecutionContext(
+          request.context.user_id,
+          request.context.conversation_id,
+          {
+            agent_id: request.context.agent_id,
+            customer_id: request.context.customer_id,
+            message_context: request.context.message_context,
+            variables: request.context.variables,
+          }
+        ),
+      }));
 
-    return await this.enhancedToolRegistry.batchExecuteTools(enhancedRequests);
+      return await enhancedRegistry.batchExecuteTools(enhancedRequests);
+    } catch (error) {
+      // Fallback to sequential execution
+      const results: ToolExecutionResult[] = [];
+      for (const request of requests) {
+        const result = await this.executeTool(request.toolId, request.parameters, request.context);
+        results.push(result);
+      }
+      return results;
+    }
   }
 
   /**
    * Export enhanced tool configuration
    */
-  exportEnhancedConfiguration(): Record<string, any> {
-    return this.enhancedToolRegistry.exportConfiguration();
+  async exportEnhancedConfiguration(): Promise<Record<string, any>> {
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      return enhancedRegistry.exportConfiguration();
+    } catch (error) {
+      return { error: 'Enhanced tools not available' };
+    }
   }
 
   /**
    * Import enhanced tool configuration
    */
-  importEnhancedConfiguration(config: Record<string, any>): boolean {
-    return this.enhancedToolRegistry.importConfiguration(config);
+  async importEnhancedConfiguration(config: Record<string, any>): Promise<boolean> {
+    try {
+      const enhancedRegistry = await this.getEnhancedToolRegistry();
+      return enhancedRegistry.importConfiguration(config);
+    } catch (error) {
+      return false;
+    }
   }
 
   /**
    * Get enhanced tool registry
    */
-  getEnhancedToolRegistry(): EnhancedToolRegistry {
-    return this.enhancedToolRegistry;
+  async getEnhancedToolRegistryInstance(): Promise<any> {
+    return await this.getEnhancedToolRegistry();
   }
 }
 

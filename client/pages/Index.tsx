@@ -470,33 +470,45 @@ export default function Index() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Free Plan */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+            {/* Basic Plan */}
             <Card className="border-2 hover:border-primary/50 transition-colors">
               <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl">Starter</CardTitle>
-                <div className="text-4xl font-bold">$0</div>
-                <CardDescription>Perfect for trying out Ojastack</CardDescription>
+                <CardTitle className="text-2xl">Basic</CardTitle>
+                <div className="space-y-2">
+                  <div className="text-lg text-muted-foreground line-through">$75</div>
+                  <div className="text-4xl font-bold text-green-600">$53</div>
+                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                </div>
+                <CardDescription>Perfect for small businesses</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">1 AI Agent</span>
+                  <span className="text-sm">2 AI Agents</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">100 conversations/month</span>
+                  <span className="text-sm">500 conversations/month</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Basic analytics</span>
+                  <span className="text-sm">Chat & multimodal</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">1 Knowledge base</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
                   <span className="text-sm">Web chat integration</span>
                 </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">Email support</span>
+                </div>
                 <Button className="w-full mt-6" variant="outline" asChild>
-                  <Link to="/signup">Get Started Free</Link>
+                  <Link to="/signup">Start Free Trial</Link>
                 </Button>
               </CardContent>
             </Card>
@@ -505,36 +517,82 @@ export default function Index() {
             <Card className="border-2 border-primary shadow-lg scale-105">
               <CardHeader className="text-center pb-8">
                 <Badge className="mb-2">Most Popular</Badge>
-                <CardTitle className="text-2xl">Professional</CardTitle>
-                <div className="text-4xl font-bold">$49</div>
+                <CardTitle className="text-2xl">Pro</CardTitle>
+                <div className="space-y-2">
+                  <div className="text-lg text-muted-foreground line-through">$250</div>
+                  <div className="text-4xl font-bold text-green-600">$175</div>
+                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                </div>
                 <CardDescription>For growing businesses</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">5 AI Agents</span>
+                  <span className="text-sm">10 AI Agents</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">5,000 conversations/month</span>
+                  <span className="text-sm">2,000 conversations/month</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Advanced analytics</span>
+                  <span className="text-sm">Live conversational video</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Multi-channel deployment</span>
+                  <span className="text-sm">5 Knowledge bases</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Voice capabilities</span>
+                  <span className="text-sm">All integrations</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
                   <span className="text-sm">Priority support</span>
                 </div>
                 <Button className="w-full mt-6" asChild>
+                  <Link to="/signup">Start Free Trial</Link>
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Startup Plan */}
+            <Card className="border-2 hover:border-primary/50 transition-colors">
+              <CardHeader className="text-center pb-8">
+                <CardTitle className="text-2xl">Startup</CardTitle>
+                <div className="space-y-2">
+                  <div className="text-lg text-muted-foreground line-through">$1,250</div>
+                  <div className="text-4xl font-bold text-green-600">$875</div>
+                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                </div>
+                <CardDescription>For scaling startups</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">100 AI Agents</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">20,000 conversations/month</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">All Pro features 10X</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">50 Knowledge bases</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">Custom integrations</span>
+                </div>
+                <div className="flex items-center">
+                  <Check className="h-4 w-4 text-green-500 mr-3" />
+                  <span className="text-sm">Dedicated support</span>
+                </div>
+                <Button className="w-full mt-6" variant="outline" asChild>
                   <Link to="/signup">Start Free Trial</Link>
                 </Button>
               </CardContent>
@@ -558,11 +616,11 @@ export default function Index() {
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Custom integrations</span>
+                  <span className="text-sm">White-label options</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">Dedicated support</span>
+                  <span className="text-sm">On-premise deployment</span>
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
@@ -570,7 +628,7 @@ export default function Index() {
                 </div>
                 <div className="flex items-center">
                   <Check className="h-4 w-4 text-green-500 mr-3" />
-                  <span className="text-sm">On-premise deployment</span>
+                  <span className="text-sm">Dedicated account manager</span>
                 </div>
                 <Button className="w-full mt-6" variant="outline" asChild>
                   <Link to="/contact">Contact Sales</Link>
@@ -608,7 +666,7 @@ export default function Index() {
       {/* Footer */}
       <footer className="bg-background border-t">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8">
             <div className="col-span-1 md:col-span-2">
               <div className="flex items-center mb-4">
                 <span className="text-2xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
@@ -641,7 +699,17 @@ export default function Index() {
                 <Link to="/docs" className="block text-sm text-muted-foreground hover:text-foreground">Documentation</Link>
                 <Link to="/contact" className="block text-sm text-muted-foreground hover:text-foreground">Contact</Link>
                 <a href="mailto:support@ojastack.tech" className="block text-sm text-muted-foreground hover:text-foreground">support@ojastack.tech</a>
-                <Link to="/status" className="block text-sm text-muted-foreground hover:text-foreground">Status</Link>
+                <Link to="/help" className="block text-sm text-muted-foreground hover:text-foreground">Help Center</Link>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold mb-4">Legal</h3>
+              <div className="space-y-2">
+                <Link to="/terms" className="block text-sm text-muted-foreground hover:text-foreground">Terms of Service</Link>
+                <Link to="/privacy" className="block text-sm text-muted-foreground hover:text-foreground">Privacy Policy</Link>
+                <Link to="/cookies" className="block text-sm text-muted-foreground hover:text-foreground">Cookie Policy</Link>
+                <Link to="/security" className="block text-sm text-muted-foreground hover:text-foreground">Security</Link>
               </div>
             </div>
           </div>

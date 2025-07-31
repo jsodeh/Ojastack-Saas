@@ -15,7 +15,7 @@ import {
   Clock,
   MessageSquare,
   TrendingUp,
-  Waveform,
+  Activity,
   Settings,
 } from "lucide-react";
 import { voiceConversationManager, type VoiceAnalytics, type VoiceMessage } from "@/lib/voice-conversation-manager";
@@ -152,7 +152,7 @@ export default function VoiceTestingDashboard({ agentId, agentName }: VoiceTesti
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Accuracy</CardTitle>
-              <Waveform className="h-4 w-4 text-muted-foreground" />
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{formatAccuracy(analytics.transcription_accuracy)}</div>
@@ -309,7 +309,7 @@ export default function VoiceTestingDashboard({ agentId, agentName }: VoiceTesti
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm">Poor (< 70%)</span>
+                    <span className="text-sm">Poor (&lt; 70%)</span>
                     <div className="flex items-center space-x-2">
                       <Progress value={10} className="w-20" />
                       <span className="text-sm text-muted-foreground">10%</span>
