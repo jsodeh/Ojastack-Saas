@@ -35,12 +35,13 @@ import IntegrationConfig from "./pages/dashboard/IntegrationConfig";
 import ProfileSettings from "./pages/dashboard/ProfileSettings";
 import WidgetContainer from "./components/WidgetContainer";
 import ErrorBoundary from "./components/ErrorBoundary";
-import VideoTestingDashboard from "./components/VideoTestingDashboard";
+
 import VideoTest from "./pages/dashboard/VideoTest";
 import MultimodalTest from "./pages/dashboard/MultimodalTest";
 import WorkflowTest from "./pages/dashboard/WorkflowTest";
 import AgentCreationWizard from "./components/agent-creation/AgentCreationWizard";
 import KnowledgeBaseManager from "./components/knowledge-base/KnowledgeBaseManager";
+import DashboardLayout from "./components/dashboard/DashboardLayout";
 
 const queryClient = new QueryClient();
 
@@ -132,7 +133,9 @@ const App = () => (
               path="/dashboard"
               element={
                 <ProtectedRoute>
-                  <DashboardOverview />
+                  <DashboardLayout>
+                    <DashboardOverview />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -140,7 +143,9 @@ const App = () => (
               path="/dashboard/demo"
               element={
                 <ProtectedRoute>
-                  <InteractiveDemo />
+                  <DashboardLayout>
+                    <InteractiveDemo />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -148,7 +153,9 @@ const App = () => (
               path="/dashboard/agents"
               element={
                 <ProtectedRoute>
-                  <AgentsPage />
+                  <DashboardLayout>
+                    <AgentsPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -156,7 +163,9 @@ const App = () => (
               path="/dashboard/agents/:agentId"
               element={
                 <ProtectedRoute>
-                  <AgentDetail />
+                  <DashboardLayout>
+                    <AgentDetail />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -164,7 +173,9 @@ const App = () => (
               path="/dashboard/agents/:agentId/test"
               element={
                 <ProtectedRoute>
-                  <TestAgent />
+                  <DashboardLayout>
+                    <TestAgent />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -172,7 +183,9 @@ const App = () => (
               path="/dashboard/knowledge"
               element={
                 <ProtectedRoute>
-                  <KnowledgeBasePage />
+                  <DashboardLayout>
+                    <KnowledgeBasePage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -180,7 +193,9 @@ const App = () => (
               path="/dashboard/api"
               element={
                 <ProtectedRoute>
-                  <APIReference />
+                  <DashboardLayout>
+                    <APIReference />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -188,7 +203,9 @@ const App = () => (
               path="/dashboard/conversations"
               element={
                 <ProtectedRoute>
-                  <ConversationsPage />
+                  <DashboardLayout>
+                    <ConversationsPage />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -196,7 +213,9 @@ const App = () => (
               path="/dashboard/integrations"
               element={
                 <ProtectedRoute>
-                  <IntegrationConfig />
+                  <DashboardLayout>
+                    <IntegrationConfig />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -204,10 +223,12 @@ const App = () => (
               path="/dashboard/team"
               element={
                 <ProtectedRoute>
-                  <PlaceholderPage
-                    title="Team"
-                    description="Manage team members"
-                  />
+                  <DashboardLayout>
+                    <PlaceholderPage
+                      title="Team"
+                      description="Manage team members"
+                    />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -215,10 +236,12 @@ const App = () => (
               path="/dashboard/settings"
               element={
                 <ProtectedRoute>
-                  <PlaceholderPage
-                    title="Settings"
-                    description="Account and app settings"
-                  />
+                  <DashboardLayout>
+                    <PlaceholderPage
+                      title="Settings"
+                      description="Account and app settings"
+                    />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -226,7 +249,9 @@ const App = () => (
               path="/dashboard/settings/profile"
               element={
                 <ProtectedRoute>
-                  <ProfileSettings />
+                  <DashboardLayout>
+                    <ProfileSettings />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -234,7 +259,9 @@ const App = () => (
               path="/dashboard/video-test"
               element={
                 <ProtectedRoute>
-                  <VideoTest />
+                  <DashboardLayout>
+                    <VideoTest />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -242,7 +269,9 @@ const App = () => (
               path="/dashboard/multimodal-test"
               element={
                 <ProtectedRoute>
-                  <MultimodalTest />
+                  <DashboardLayout>
+                    <MultimodalTest />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -250,7 +279,9 @@ const App = () => (
               path="/dashboard/workflow-test"
               element={
                 <ProtectedRoute>
-                  <WorkflowTest />
+                  <DashboardLayout>
+                    <WorkflowTest />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -258,7 +289,9 @@ const App = () => (
               path="/dashboard/agents/create/:templateId"
               element={
                 <ProtectedRoute>
-                  <AgentCreationWizard />
+                  <DashboardLayout>
+                    <AgentCreationWizard />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />
@@ -266,7 +299,9 @@ const App = () => (
               path="/dashboard/knowledge-bases"
               element={
                 <ProtectedRoute>
-                  <KnowledgeBaseManager />
+                  <DashboardLayout>
+                    <KnowledgeBaseManager />
+                  </DashboardLayout>
                 </ProtectedRoute>
               }
             />

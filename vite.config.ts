@@ -12,6 +12,8 @@ export default defineConfig(({ mode }) => ({
       allow: ["./client", "./shared"],
       deny: [".env", ".env.*", "*.{crt,pem}", "**/.git/**", "server/**"],
     },
+    // Enable history API fallback for client-side routing
+    historyApiFallback: true,
   },
   build: {
     outDir: "dist/spa",
