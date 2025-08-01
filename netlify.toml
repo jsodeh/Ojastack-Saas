@@ -1,9 +1,9 @@
 [build]
-  # Build command for Netlify (client-only, skip typecheck)
-  command = "vite build"
+  # Build command for Netlify (client-only build)
+  command = "npm run build:client"
   
-  # Output directory
-  publish = "dist/spa"
+  # Output directory where Vite builds the SPA
+  publish = "dist"
   
   # Node version
   environment = { NODE_VERSION = "18" }
