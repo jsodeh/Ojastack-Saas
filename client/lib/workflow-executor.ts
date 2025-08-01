@@ -16,6 +16,7 @@ import {
   WorkflowExecutionContext 
 } from './workflow-nodes/base-node';
 import { nodeRegistry } from './workflow-nodes/node-registry';
+import { n8nWorkflowIntegration } from './n8n-workflow-integration';
 import { supabase } from './supabase';
 
 export interface WorkflowExecutionOptions {
@@ -154,6 +155,14 @@ export class WorkflowExecutor {
 
       // Save execution to database
       await this.saveExecution(execution);
+
+      // Trigger N8N workflows if configured
+      try {
+        await n8nWorkflowIntegration.processWorkflowExecution(execution);
+      } catch (error) {
+        console.error('Failed to process N8N workflow integration:', error);
+        // Don't fail the main execution if N8N integration fails
+      }
 
       return execution;
 

@@ -14,6 +14,8 @@ import { LoopNode } from './loop-node';
 import { DataTransformNode } from './data-transform-node';
 import { JSNode } from './js-node';
 import { SubworkflowNode } from './subworkflow-node';
+import { WhatsAppNode } from './whatsapp-node';
+import { N8NNode } from './n8n-node';
 import { WorkflowNode } from '@/lib/workflow-types';
 
 export class NodeRegistry {
@@ -63,6 +65,12 @@ export class NodeRegistry {
     this.register('data_transform', DataTransformNode);
     this.register('javascript', JSNode);
     this.register('subworkflow', SubworkflowNode);
+    
+    // Communication nodes
+    this.register('whatsapp', WhatsAppNode);
+    
+    // Automation nodes
+    this.register('n8n_workflow', N8NNode);
   }
 
   /**
@@ -143,7 +151,9 @@ export class NodeRegistry {
       loop: 'utilities',
       data_transform: 'utilities',
       javascript: 'utilities',
-      subworkflow: 'utilities'
+      subworkflow: 'utilities',
+      whatsapp: 'integrations',
+      n8n_workflow: 'integrations'
     };
 
     this.nodeClasses.forEach((nodeClass, nodeType) => {
