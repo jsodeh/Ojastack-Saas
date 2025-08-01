@@ -2,93 +2,112 @@ import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { 
   Check,
   X,
   ArrowRight,
-  Users,
   MessageSquare,
   Phone,
   Eye,
   BarChart3,
-  Shield,
-  Headphones,
-  Zap,
-  Star,
   HelpCircle
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export default function Pricing() {
   const [isYearly, setIsYearly] = useState(false);
 
   const plans = [
     {
-      name: "Starter",
-      description: "Perfect for small businesses getting started",
-      monthlyPrice: 49,
-      yearlyPrice: 39,
+      name: "Basic",
+      description: "Perfect for small businesses",
+      monthlyPrice: 53,
+      yearlyPrice: 42, // 20% discount for yearly
       popular: false,
       features: [
-        { name: "1 AI Agent", included: true },
-        { name: "1,000 conversations/month", included: true },
-        { name: "Chat support only", included: true },
-        { name: "Basic analytics", included: true },
+        { name: "2 AI Agents", included: true },
+        { name: "500 conversations/month", included: true },
+        { name: "Chat & multimodal", included: true },
+        { name: "1 Knowledge base", included: true },
+        { name: "Web chat integration", included: true },
         { name: "Email support", included: true },
+        { name: "Basic analytics", included: true },
         { name: "Standard integrations", included: true },
         { name: "Voice agents", included: false },
-        { name: "Vision processing", included: false },
-        { name: "Advanced analytics", included: false },
+        { name: "Live conversational video", included: false },
         { name: "Priority support", included: false },
         { name: "Custom integrations", included: false },
         { name: "White-label options", included: false }
       ]
     },
     {
-      name: "Professional",
-      description: "For growing businesses with higher volume",
-      monthlyPrice: 149,
-      yearlyPrice: 119,
+      name: "Pro",
+      description: "For growing businesses",
+      monthlyPrice: 175,
+      yearlyPrice: 140, // 20% discount for yearly
       popular: true,
       features: [
-        { name: "5 AI Agents", included: true },
-        { name: "10,000 conversations/month", included: true },
-        { name: "Chat, Voice & Vision", included: true },
-        { name: "Advanced analytics", included: true },
+        { name: "10 AI Agents", included: true },
+        { name: "2,000 conversations/month", included: true },
+        { name: "Live conversational video", included: true },
+        { name: "5 Knowledge bases", included: true },
+        { name: "All integrations", included: true },
         { name: "Priority support", included: true },
-        { name: "Standard integrations", included: true },
-        { name: "Custom integrations", included: true },
+        { name: "Advanced analytics", included: true },
+        { name: "Voice agents", included: true },
         { name: "API access", included: true },
         { name: "Team collaboration", included: true },
+        { name: "Custom integrations", included: true },
         { name: "Advanced training", included: true },
-        { name: "White-label options", included: false },
-        { name: "Dedicated support", included: false }
+        { name: "White-label options", included: false }
       ]
     },
     {
-      name: "Enterprise",
-      description: "For large organizations with custom needs",
-      monthlyPrice: 499,
-      yearlyPrice: 399,
+      name: "Startup",
+      description: "For scaling startups",
+      monthlyPrice: 875,
+      yearlyPrice: 700, // 20% discount for yearly
       popular: false,
-      customPricing: true,
       features: [
-        { name: "Unlimited AI Agents", included: true },
-        { name: "Unlimited conversations", included: true },
-        { name: "All agent types", included: true },
-        { name: "Enterprise analytics", included: true },
-        { name: "24/7 dedicated support", included: true },
-        { name: "All integrations", included: true },
+        { name: "100 AI Agents", included: true },
+        { name: "20,000 conversations/month", included: true },
+        { name: "All Pro features 10X", included: true },
+        { name: "50 Knowledge bases", included: true },
         { name: "Custom integrations", included: true },
+        { name: "Dedicated support", included: true },
+        { name: "Advanced analytics", included: true },
+        { name: "Voice & video agents", included: true },
         { name: "Full API access", included: true },
         { name: "Advanced team features", included: true },
         { name: "Custom training", included: true },
         { name: "White-label options", included: true },
-        { name: "On-premise deployment", included: true }
+        { name: "On-premise deployment", included: false }
+      ]
+    },
+    {
+      name: "Enterprise",
+      description: "For large organizations",
+      monthlyPrice: null,
+      yearlyPrice: null,
+      popular: false,
+      customPricing: true,
+      features: [
+        { name: "Unlimited agents", included: true },
+        { name: "Unlimited conversations", included: true },
+        { name: "White-label options", included: true },
+        { name: "On-premise deployment", included: true },
+        { name: "Custom SLA", included: true },
+        { name: "Dedicated account manager", included: true },
+        { name: "24/7 phone support", included: true },
+        { name: "Custom integrations", included: true },
+        { name: "Advanced security", included: true },
+        { name: "Compliance certifications", included: true },
+        { name: "Custom training", included: true },
+        { name: "Professional services", included: true },
+        { name: "Multi-region deployment", included: true }
       ]
     }
   ];
@@ -191,7 +210,7 @@ export default function Pricing() {
         {/* Pricing Cards */}
         <section className="py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
               {plans.map((plan, index) => (
                 <Card key={index} className={`relative ${plan.popular ? 'border-primary shadow-lg scale-105' : ''}`}>
                   {plan.popular && (
@@ -207,12 +226,22 @@ export default function Pricing() {
                         <div className="text-4xl font-bold">Custom</div>
                       ) : (
                         <>
-                          <div className="text-4xl font-bold">
-                            ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
-                            <span className="text-lg font-normal text-muted-foreground">/month</span>
+                          <div className="space-y-2">
+                            {isYearly && (
+                              <div className="text-lg text-muted-foreground line-through">
+                                ${plan.monthlyPrice}
+                              </div>
+                            )}
+                            <div className="text-4xl font-bold">
+                              ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
+                              <span className="text-lg font-normal text-muted-foreground">/month</span>
+                            </div>
+                            {isYearly && (
+                              <Badge variant="secondary" className="text-xs">20% OFF</Badge>
+                            )}
                           </div>
                           {isYearly && (
-                            <div className="text-sm text-muted-foreground">
+                            <div className="text-sm text-muted-foreground mt-2">
                               Billed annually (${plan.yearlyPrice * 12}/year)
                             </div>
                           )}
@@ -267,42 +296,50 @@ export default function Pricing() {
                   <thead>
                     <tr className="border-b">
                       <th className="text-left p-4 font-semibold">Features</th>
-                      <th className="text-center p-4 font-semibold">Starter</th>
-                      <th className="text-center p-4 font-semibold bg-primary/5">Professional</th>
+                      <th className="text-center p-4 font-semibold">Basic</th>
+                      <th className="text-center p-4 font-semibold bg-primary/5">Pro</th>
+                      <th className="text-center p-4 font-semibold">Startup</th>
                       <th className="text-center p-4 font-semibold">Enterprise</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
                       { category: "AI Agents", features: [
-                        { name: "Number of Agents", starter: "1", professional: "5", enterprise: "Unlimited" },
-                        { name: "Chat Agents", starter: true, professional: true, enterprise: true },
-                        { name: "Voice Agents", starter: false, professional: true, enterprise: true },
-                        { name: "Vision Agents", starter: false, professional: true, enterprise: true },
-                        { name: "Custom Agent Types", starter: false, professional: false, enterprise: true }
+                        { name: "Number of Agents", basic: "2", pro: "10", startup: "100", enterprise: "Unlimited" },
+                        { name: "Chat Agents", basic: true, pro: true, startup: true, enterprise: true },
+                        { name: "Voice Agents", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Video Agents", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Multimodal Agents", basic: true, pro: true, startup: true, enterprise: true }
                       ]},
                       { category: "Usage Limits", features: [
-                        { name: "Monthly Conversations", starter: "1,000", professional: "10,000", enterprise: "Unlimited" },
-                        { name: "API Calls", starter: "5,000", professional: "50,000", enterprise: "Unlimited" },
-                        { name: "Data Storage", starter: "1 GB", professional: "10 GB", enterprise: "Unlimited" },
-                        { name: "File Uploads", starter: "100 MB", professional: "1 GB", enterprise: "Unlimited" }
+                        { name: "Monthly Conversations", basic: "500", pro: "2,000", startup: "20,000", enterprise: "Unlimited" },
+                        { name: "Knowledge Bases", basic: "1", pro: "5", startup: "50", enterprise: "Unlimited" },
+                        { name: "API Calls", basic: "2,500", pro: "10,000", startup: "100,000", enterprise: "Unlimited" },
+                        { name: "Data Storage", basic: "1 GB", pro: "10 GB", startup: "100 GB", enterprise: "Unlimited" }
+                      ]},
+                      { category: "Features & Integrations", features: [
+                        { name: "Web Chat Integration", basic: true, pro: true, startup: true, enterprise: true },
+                        { name: "WhatsApp Integration", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Slack Integration", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Custom Integrations", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Advanced Analytics", basic: false, pro: true, startup: true, enterprise: true }
                       ]},
                       { category: "Support & Training", features: [
-                        { name: "Support Type", starter: "Email", professional: "Priority", enterprise: "24/7 Dedicated" },
-                        { name: "Response Time", starter: "24-48h", professional: "4-8h", enterprise: "1h" },
-                        { name: "Custom Training", starter: false, professional: true, enterprise: true },
-                        { name: "Onboarding Support", starter: false, professional: true, enterprise: true }
+                        { name: "Support Type", basic: "Email", pro: "Priority", startup: "Dedicated", enterprise: "24/7 Phone" },
+                        { name: "Response Time", basic: "24-48h", pro: "4-8h", startup: "2-4h", enterprise: "1h" },
+                        { name: "Custom Training", basic: false, pro: true, startup: true, enterprise: true },
+                        { name: "Onboarding Support", basic: false, pro: true, startup: true, enterprise: true }
                       ]},
-                      { category: "Advanced Features", features: [
-                        { name: "White-label Options", starter: false, professional: false, enterprise: true },
-                        { name: "On-premise Deployment", starter: false, professional: false, enterprise: true },
-                        { name: "Custom Integrations", starter: false, professional: true, enterprise: true },
-                        { name: "Advanced Analytics", starter: false, professional: true, enterprise: true }
+                      { category: "Enterprise Features", features: [
+                        { name: "White-label Options", basic: false, pro: false, startup: true, enterprise: true },
+                        { name: "On-premise Deployment", basic: false, pro: false, startup: false, enterprise: true },
+                        { name: "Custom SLA", basic: false, pro: false, startup: false, enterprise: true },
+                        { name: "Compliance Certifications", basic: false, pro: false, startup: false, enterprise: true }
                       ]}
                     ].map((section, sectionIdx) => (
                       <React.Fragment key={sectionIdx}>
                         <tr className="bg-muted/30">
-                          <td colSpan={4} className="p-4 font-semibold text-sm uppercase tracking-wide">
+                          <td colSpan={5} className="p-4 font-semibold text-sm uppercase tracking-wide">
                             {section.category}
                           </td>
                         </tr>
@@ -310,25 +347,36 @@ export default function Pricing() {
                           <tr key={featureIdx} className="border-b border-border/50">
                             <td className="p-4 font-medium">{feature.name}</td>
                             <td className="p-4 text-center">
-                              {typeof feature.starter === 'boolean' ? (
-                                feature.starter ? (
+                              {typeof feature.basic === 'boolean' ? (
+                                feature.basic ? (
                                   <Check className="h-4 w-4 text-green-500 mx-auto" />
                                 ) : (
                                   <X className="h-4 w-4 text-muted-foreground mx-auto" />
                                 )
                               ) : (
-                                feature.starter
+                                feature.basic
                               )}
                             </td>
                             <td className="p-4 text-center bg-primary/5">
-                              {typeof feature.professional === 'boolean' ? (
-                                feature.professional ? (
+                              {typeof feature.pro === 'boolean' ? (
+                                feature.pro ? (
                                   <Check className="h-4 w-4 text-green-500 mx-auto" />
                                 ) : (
                                   <X className="h-4 w-4 text-muted-foreground mx-auto" />
                                 )
                               ) : (
-                                feature.professional
+                                feature.pro
+                              )}
+                            </td>
+                            <td className="p-4 text-center">
+                              {typeof feature.startup === 'boolean' ? (
+                                feature.startup ? (
+                                  <Check className="h-4 w-4 text-green-500 mx-auto" />
+                                ) : (
+                                  <X className="h-4 w-4 text-muted-foreground mx-auto" />
+                                )
+                              ) : (
+                                feature.startup
                               )}
                             </td>
                             <td className="p-4 text-center">
