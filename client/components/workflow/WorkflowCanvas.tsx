@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { WorkflowNode, WorkflowConnection, CanvasPosition, ViewportState, DragState } from '@/lib/workflow-types';
 import WorkflowNodeComponent from './WorkflowNodeComponent';
 import WorkflowConnection as ConnectionComponent from './WorkflowConnectionComponent';
+import NodeConfigurationPanel from './NodeConfigurationPanel';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize, Move } from 'lucide-react';
 
@@ -47,6 +48,23 @@ export default function WorkflowCanvas({
     startPosition: { x: 0, y: 0 },
     currentPosition: { x: 0, y: 0 }
   });
+
+  // Configuration panel state
+  const [configPanelOpen, setConfigPanelOpen] = useState(false);
+  const [configNode, setConfigNode] = useState<WorkflowNode | null>(null);
+
+  // Configuration panel handlers
+  const handleNodeConfigure = useCallback((node: WorkflowNode) => {
+    setConfigNode(node);
+    setConfigPanelOpen(true);
+  }, []);
+
+  const handleConfigSave = useCallback((updatedNode: WorkflowNode) => {
+    // This would typically update the node in the parent component
+    // For now, we'll just close the panel
+    setConfigPanelOpen(false);
+    setConfigNode(null);
+  }, []);
   
   const [connectionDrag, setConnectionDrag] = useState<{
     isActive: boolean;
@@ -356,6 +374,7 @@ export default function WorkflowCanvas({
                   onDrag={(position) => handleNodeDrag(node.id, position)}
                   onConnectionStart={handleConnectionStart}
                   onConnectionEnd={handleConnectionEnd}
+                  onConfigure={() => handleNodeConfigure(node)}
                 />
               </div>
             );
@@ -399,6 +418,31 @@ export default function WorkflowCanvas({
         <div className="absolute top-4 left-4 bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm flex items-center gap-2">
           <Move className="w-4 h-4" />
           Panning
+        </div>
+      )}
+
+      {/* Node Configuration Panel */}
+      {configPanelOpen && configNode && (
+        <div className="absolute top-0 right-0 h-full">
+          <NodeConfigurationPanel
+            node={configNode}
+            onConfigChange={(config) => {
+              // Update node configuration
+              const updatedNode = { ...configNode, config };
+              setConfigNode(updatedNode);
+              // You would typically call a prop function here to update the node in the parent
+            }}
+            onClose={() => {
+              setConfigPanelOpen(false);
+              setConfigNode(null);
+            }}
+            onSave={() => {
+              // Save configuration and close panel
+              setConfigPanelOpen(false);
+              setConfigNode(null);
+            }}
+            availableFields={['data', 'message', 'user', 'timestamp', 'status']} // This would come from props or context
+          />
         </div>
       )}
     </div>

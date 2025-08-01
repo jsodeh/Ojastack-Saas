@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import DashboardLayout from '../../components/dashboard/DashboardLayout';
 import WorkflowManager from '../../components/WorkflowManager';
 import { n8nService } from '../../lib/n8n-service';
 import { n8nIntegration } from '../../lib/n8n-integration';
@@ -130,8 +129,7 @@ const WorkflowTest: React.FC = () => {
     };
 
     return (
-        <DashboardLayout>
-            <div className="space-y-6">
+        <div className="space-y-6">
                 <div>
                     <h1 className="text-3xl font-bold text-gray-900">N8N Workflow Testing</h1>
                     <p className="mt-2 text-gray-600">
@@ -346,7 +344,6 @@ const WorkflowTest: React.FC = () => {
                     </div>
                 </div>
             </div>
-        </DashboardLayout>
     );
 };
 

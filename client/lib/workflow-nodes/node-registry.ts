@@ -9,6 +9,11 @@ import { AIResponseNode, SendMessageNode } from './action-node';
 import { ConditionNode, SentimentAnalysisNode } from './condition-node';
 import { WhatsAppIntegrationNode, KnowledgeBaseNode } from './integration-node';
 import { ResponseNode, ErrorResponseNode, RedirectResponseNode } from './response-node';
+import { ConditionalLogicNode } from './conditional-logic-node';
+import { LoopNode } from './loop-node';
+import { DataTransformNode } from './data-transform-node';
+import { JSNode } from './js-node';
+import { SubworkflowNode } from './subworkflow-node';
 import { WorkflowNode } from '@/lib/workflow-types';
 
 export class NodeRegistry {
@@ -42,6 +47,7 @@ export class NodeRegistry {
     // Condition nodes
     this.register('condition', ConditionNode);
     this.register('sentiment_analysis', SentimentAnalysisNode);
+    this.register('conditional_logic', ConditionalLogicNode);
 
     // Integration nodes
     this.register('whatsapp_integration', WhatsAppIntegrationNode);
@@ -51,6 +57,12 @@ export class NodeRegistry {
     this.register('response', ResponseNode);
     this.register('error_response', ErrorResponseNode);
     this.register('redirect_response', RedirectResponseNode);
+
+    // Advanced workflow nodes
+    this.register('loop', LoopNode);
+    this.register('data_transform', DataTransformNode);
+    this.register('javascript', JSNode);
+    this.register('subworkflow', SubworkflowNode);
   }
 
   /**
@@ -122,11 +134,16 @@ export class NodeRegistry {
       send_message: 'actions',
       condition: 'conditions',
       sentiment_analysis: 'conditions',
+      conditional_logic: 'conditions',
       whatsapp_integration: 'integrations',
       knowledge_base: 'integrations',
       response: 'utilities',
       error_response: 'utilities',
-      redirect_response: 'utilities'
+      redirect_response: 'utilities',
+      loop: 'utilities',
+      data_transform: 'utilities',
+      javascript: 'utilities',
+      subworkflow: 'utilities'
     };
 
     this.nodeClasses.forEach((nodeClass, nodeType) => {
