@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { WorkflowNode, WorkflowConnection, CanvasPosition, ViewportState, DragState } from '@/lib/workflow-types';
 import WorkflowNodeComponent from './WorkflowNodeComponent';
-import WorkflowConnection as ConnectionComponent from './WorkflowConnectionComponent';
+import { WorkflowConnection as ConnectionComponent } from './WorkflowConnectionComponent';
 import NodeConfigurationPanel from './NodeConfigurationPanel';
 import { Button } from '@/components/ui/button';
 import { ZoomIn, ZoomOut, Maximize, Move } from 'lucide-react';

@@ -1,21 +1,33 @@
 [build]
-  command = "npm run build:client"
-  functions = "netlify/functions"
-  publish = "dist/spa"
-
-
-[functions]
-  external_node_modules = ["express"]
-  node_bundler = "esbuild"
+  # Build command for Netlify (client-only, skip typecheck)
+  command = "vite build"
   
-[[redirects]]
-  force = true
-  from = "/api/*"
-  status = 200
-  to = "/.netlify/functions/api/:splat"
+  # Output directory
+  publish = "dist/spa"
+  
+  # Node version
+  environment = { NODE_VERSION = "18" }
 
-# SPA fallback - serve index.html for all routes that don't match files
+[build.environment]
+  # Ensure we're building for production
+  NODE_ENV = "production"
+
+# Redirect all routes to index.html for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
+
+# Headers for security and performance
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"

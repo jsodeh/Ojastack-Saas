@@ -2,7 +2,7 @@
 -- This migration creates tables for user-provided WhatsApp Business API credentials
 
 -- User encryption keys for credential security
-CREATE TABLE user_encryption_keys (
+CREATE TABLE IF NOT EXISTS user_encryption_keys (
   user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   key_hash TEXT NOT NULL,
   salt TEXT NOT NULL,
@@ -11,7 +11,7 @@ CREATE TABLE user_encryption_keys (
 );
 
 -- User WhatsApp credentials (encrypted)
-CREATE TABLE whatsapp_credentials (
+CREATE TABLE IF NOT EXISTS whatsapp_credentials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   business_account_id TEXT NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE whatsapp_credentials (
 );
 
 -- Webhook configurations for dynamic routing
-CREATE TABLE whatsapp_webhooks (
+CREATE TABLE IF NOT EXISTS whatsapp_webhooks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   credential_id UUID REFERENCES whatsapp_credentials(id) ON DELETE CASCADE,
@@ -41,7 +41,7 @@ CREATE TABLE whatsapp_webhooks (
 );
 
 -- Agent WhatsApp configurations
-CREATE TABLE agent_whatsapp_configs (
+CREATE TABLE IF NOT EXISTS agent_whatsapp_configs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
   credential_id UUID REFERENCES whatsapp_credentials(id) ON DELETE CASCADE,
@@ -57,7 +57,7 @@ CREATE TABLE agent_whatsapp_configs (
 );
 
 -- WhatsApp message history with user credential association
-CREATE TABLE whatsapp_messages (
+CREATE TABLE IF NOT EXISTS whatsapp_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
   credential_id UUID REFERENCES whatsapp_credentials(id) ON DELETE CASCADE,
@@ -75,15 +75,15 @@ CREATE TABLE whatsapp_messages (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_whatsapp_credentials_user_id ON whatsapp_credentials(user_id);
-CREATE INDEX idx_whatsapp_credentials_phone_number_id ON whatsapp_credentials(phone_number_id);
-CREATE INDEX idx_whatsapp_webhooks_webhook_url ON whatsapp_webhooks(webhook_url);
-CREATE INDEX idx_whatsapp_webhooks_phone_number_id ON whatsapp_webhooks(phone_number_id);
-CREATE INDEX idx_agent_whatsapp_configs_agent_id ON agent_whatsapp_configs(agent_id);
-CREATE INDEX idx_agent_whatsapp_configs_credential_id ON agent_whatsapp_configs(credential_id);
-CREATE INDEX idx_whatsapp_messages_agent_id ON whatsapp_messages(agent_id);
-CREATE INDEX idx_whatsapp_messages_conversation_id ON whatsapp_messages(conversation_id);
-CREATE INDEX idx_whatsapp_messages_timestamp ON whatsapp_messages(timestamp);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_credentials_user_id ON whatsapp_credentials(user_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_credentials_phone_number_id ON whatsapp_credentials(phone_number_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhooks_webhook_url ON whatsapp_webhooks(webhook_url);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_webhooks_phone_number_id ON whatsapp_webhooks(phone_number_id);
+CREATE INDEX IF NOT EXISTS idx_agent_whatsapp_configs_agent_id ON agent_whatsapp_configs(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agent_whatsapp_configs_credential_id ON agent_whatsapp_configs(credential_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_agent_id ON whatsapp_messages(agent_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_conversation_id ON whatsapp_messages(conversation_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_timestamp ON whatsapp_messages(timestamp);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE whatsapp_credentials ENABLE ROW LEVEL SECURITY;

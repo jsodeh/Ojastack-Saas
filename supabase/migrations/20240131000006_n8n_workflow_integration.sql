@@ -2,7 +2,7 @@
 -- Enables visual agent workflows to trigger and interact with N8N automation workflows
 
 -- N8N workflow mappings (connects visual workflows to N8N workflows)
-CREATE TABLE n8n_workflow_mappings (
+CREATE TABLE IF NOT EXISTS n8n_workflow_mappings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     visual_workflow_id UUID NOT NULL REFERENCES agent_workflows(id) ON DELETE CASCADE,
     n8n_workflow_id TEXT NOT NULL, -- N8N workflow ID (external)
@@ -25,7 +25,7 @@ CREATE TABLE n8n_workflow_mappings (
 );
 
 -- N8N execution records (tracks N8N workflow executions triggered by visual workflows)
-CREATE TABLE n8n_execution_records (
+CREATE TABLE IF NOT EXISTS n8n_execution_records (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     mapping_id UUID NOT NULL REFERENCES n8n_workflow_mappings(id) ON DELETE CASCADE,
     visual_execution_id UUID REFERENCES workflow_executions(id) ON DELETE SET NULL,
@@ -54,7 +54,7 @@ CREATE TABLE n8n_execution_records (
 );
 
 -- N8N workflow templates (cached N8N template information)
-CREATE TABLE n8n_workflow_templates (
+CREATE TABLE IF NOT EXISTS n8n_workflow_templates (
     id TEXT PRIMARY KEY, -- Template ID from N8N service
     name TEXT NOT NULL,
     description TEXT,
@@ -78,7 +78,7 @@ CREATE TABLE n8n_workflow_templates (
 );
 
 -- N8N integration settings (per-user N8N configuration)
-CREATE TABLE n8n_integration_settings (
+CREATE TABLE IF NOT EXISTS n8n_integration_settings (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
@@ -104,7 +104,7 @@ CREATE TABLE n8n_integration_settings (
 );
 
 -- N8N webhook endpoints (tracks webhook URLs for N8N workflows)
-CREATE TABLE n8n_webhook_endpoints (
+CREATE TABLE IF NOT EXISTS n8n_webhook_endpoints (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     mapping_id UUID NOT NULL REFERENCES n8n_workflow_mappings(id) ON DELETE CASCADE,
     webhook_path TEXT NOT NULL,
@@ -128,7 +128,7 @@ CREATE TABLE n8n_webhook_endpoints (
 );
 
 -- N8N integration analytics (aggregated statistics)
-CREATE TABLE n8n_integration_analytics (
+CREATE TABLE IF NOT EXISTS n8n_integration_analytics (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     date DATE NOT NULL,
@@ -305,9 +305,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Indexes for performance
-CREATE INDEX idx_n8n_mappings_user_active ON n8n_workflow_mappings(user_id, is_active);
-CREATE INDEX idx_n8n_executions_mapping_status ON n8n_execution_records(mapping_id, status);
-CREATE INDEX idx_n8n_executions_completed_at ON n8n_execution_records(completed_at) WHERE completed_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_n8n_mappings_user_active ON n8n_workflow_mappings(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_n8n_executions_mapping_status ON n8n_execution_records(mapping_id, status);
+CREATE INDEX IF NOT EXISTS idx_n8n_executions_completed_at ON n8n_execution_records(completed_at) WHERE completed_at IS NOT NULL;
 
 -- Comments for documentation
 COMMENT ON TABLE n8n_workflow_mappings IS 'Maps visual agent workflows to N8N automation workflows';

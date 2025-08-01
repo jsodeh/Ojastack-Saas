@@ -106,8 +106,9 @@ export default function WorkflowNodeComponent({
         document.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);  // Han
-dle connection port interactions
+  }, [isDragging, handleMouseMove, handleMouseUp]);
+
+  // Handle connection port interactions
   const handlePortMouseDown = useCallback((portId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();

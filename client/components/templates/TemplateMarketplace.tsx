@@ -505,8 +505,8 @@ export const TemplateMarketplace: React.FC<TemplateMarketplaceProps> = ({
                         <button
                           onClick={() => setSelectedCategory('')}
                           className={`block w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedCategory === ''
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'hover:bg-gray-100'
+                            ? 'bg-blue-100 text-blue-800'
+                            : 'hover:bg-gray-100'
                             }`}
                         >
                           All Categories
@@ -516,8 +516,8 @@ export const TemplateMarketplace: React.FC<TemplateMarketplaceProps> = ({
                             key={category.name}
                             onClick={() => setSelectedCategory(category.name)}
                             className={`block w-full text-left px-3 py-2 rounded text-sm transition-colors ${selectedCategory === category.name
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'hover:bg-gray-100'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'hover:bg-gray-100'
                               }`}
                           >
                             {category.name} ({category.count})
@@ -535,8 +535,8 @@ export const TemplateMarketplace: React.FC<TemplateMarketplaceProps> = ({
                             key={tag}
                             onClick={() => handleTagToggle(tag)}
                             className={`px-3 py-1 rounded-full text-sm transition-colors ${selectedTags.includes(tag)
-                                ? 'bg-blue-100 text-blue-800 border border-blue-200'
-                                : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                              ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                               }`}
                           >
                             {tag} ({count})

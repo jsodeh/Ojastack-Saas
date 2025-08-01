@@ -2,7 +2,7 @@
 -- This migration creates tables for dynamic workflows, personas, templates, and deployments
 
 -- Agent workflows with visual node-based structure
-CREATE TABLE agent_workflows (
+CREATE TABLE IF NOT EXISTS agent_workflows (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE agent_workflows (
 );
 
 -- Agent personas with personality and behavior configuration
-CREATE TABLE agent_personas (
+CREATE TABLE IF NOT EXISTS agent_personas (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -32,30 +32,20 @@ CREATE TABLE agent_personas (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enhanced agent templates with customization options
-CREATE TABLE agent_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT NOT NULL,
-  description TEXT NOT NULL,
-  category TEXT NOT NULL,
-  tags TEXT[] DEFAULT '{}',
-  workflow_id UUID REFERENCES agent_workflows(id),
-  persona_id UUID REFERENCES agent_personas(id),
-  configuration JSONB NOT NULL DEFAULT '{}',
-  customization_options JSONB NOT NULL DEFAULT '[]',
-  setup_instructions JSONB NOT NULL DEFAULT '[]',
-  metadata JSONB NOT NULL DEFAULT '{}',
-  is_official BOOLEAN DEFAULT false,
-  is_public BOOLEAN DEFAULT false,
-  usage_count INTEGER DEFAULT 0,
-  rating DECIMAL(3,2) DEFAULT 0,
-  created_by UUID REFERENCES auth.users(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Add new columns to existing agent_templates table
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS workflow_id UUID REFERENCES agent_workflows(id);
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS persona_id UUID REFERENCES agent_personas(id);
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS tags TEXT[] DEFAULT '{}';
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS configuration JSONB DEFAULT '{}';
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS customization_options JSONB DEFAULT '[]';
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS setup_instructions JSONB DEFAULT '[]';
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS is_official BOOLEAN DEFAULT false;
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS is_public BOOLEAN DEFAULT false;
+ALTER TABLE agent_templates ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES auth.users(id);
 
 -- Agent deployments with runtime management
-CREATE TABLE agent_deployments (
+CREATE TABLE IF NOT EXISTS agent_deployments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   agent_id UUID REFERENCES agents(id) ON DELETE CASCADE,
@@ -71,7 +61,7 @@ CREATE TABLE agent_deployments (
 );
 
 -- Workflow execution logs for debugging and monitoring
-CREATE TABLE workflow_executions (
+CREATE TABLE IF NOT EXISTS workflow_executions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   deployment_id UUID REFERENCES agent_deployments(id) ON DELETE CASCADE,
   workflow_id UUID REFERENCES agent_workflows(id),
@@ -85,7 +75,7 @@ CREATE TABLE workflow_executions (
 );
 
 -- Template ratings and reviews for marketplace
-CREATE TABLE template_reviews (
+CREATE TABLE IF NOT EXISTS template_reviews (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID REFERENCES agent_templates(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -96,7 +86,7 @@ CREATE TABLE template_reviews (
 );
 
 -- Workflow node definitions for the visual builder
-CREATE TABLE workflow_node_definitions (
+CREATE TABLE IF NOT EXISTS workflow_node_definitions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   type TEXT NOT NULL,
   name TEXT NOT NULL,
@@ -113,7 +103,7 @@ CREATE TABLE workflow_node_definitions (
 );
 
 -- Persona creation sessions for wizard state management
-CREATE TABLE persona_creation_sessions (
+CREATE TABLE IF NOT EXISTS persona_creation_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   session_data JSONB NOT NULL DEFAULT '{}',
@@ -125,19 +115,19 @@ CREATE TABLE persona_creation_sessions (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_agent_workflows_user_id ON agent_workflows(user_id);
-CREATE INDEX idx_agent_workflows_template_id ON agent_workflows(template_id);
-CREATE INDEX idx_agent_workflows_status ON agent_workflows(status);
-CREATE INDEX idx_agent_personas_user_id ON agent_personas(user_id);
-CREATE INDEX idx_agent_templates_category ON agent_templates(category);
-CREATE INDEX idx_agent_templates_is_public ON agent_templates(is_public);
-CREATE INDEX idx_agent_templates_rating ON agent_templates(rating DESC);
-CREATE INDEX idx_agent_deployments_user_id ON agent_deployments(user_id);
-CREATE INDEX idx_agent_deployments_status ON agent_deployments(status);
-CREATE INDEX idx_workflow_executions_deployment_id ON workflow_executions(deployment_id);
-CREATE INDEX idx_workflow_executions_status ON workflow_executions(status);
-CREATE INDEX idx_workflow_node_definitions_type ON workflow_node_definitions(type);
-CREATE INDEX idx_workflow_node_definitions_category ON workflow_node_definitions(category);
+CREATE INDEX IF NOT EXISTS idx_agent_workflows_user_id ON agent_workflows(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_workflows_template_id ON agent_workflows(template_id);
+CREATE INDEX IF NOT EXISTS idx_agent_workflows_status ON agent_workflows(status);
+CREATE INDEX IF NOT EXISTS idx_agent_personas_user_id ON agent_personas(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_templates_category ON agent_templates(category);
+CREATE INDEX IF NOT EXISTS idx_agent_templates_is_public ON agent_templates(is_public);
+CREATE INDEX IF NOT EXISTS idx_agent_templates_rating ON agent_templates(rating DESC);
+CREATE INDEX IF NOT EXISTS idx_agent_deployments_user_id ON agent_deployments(user_id);
+CREATE INDEX IF NOT EXISTS idx_agent_deployments_status ON agent_deployments(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_deployment_id ON workflow_executions(deployment_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_executions_status ON workflow_executions(status);
+CREATE INDEX IF NOT EXISTS idx_workflow_node_definitions_type ON workflow_node_definitions(type);
+CREATE INDEX IF NOT EXISTS idx_workflow_node_definitions_category ON workflow_node_definitions(category);
 
 -- Row Level Security (RLS) policies
 ALTER TABLE agent_workflows ENABLE ROW LEVEL SECURITY;
@@ -174,9 +164,16 @@ CREATE POLICY "Users can update their own personas" ON agent_personas
 CREATE POLICY "Users can delete their own personas" ON agent_personas
   FOR DELETE USING (auth.uid() = user_id);
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Agent templates are publicly readable" ON agent_templates;
+DROP POLICY IF EXISTS "Users can view public templates and their own" ON agent_templates;
+DROP POLICY IF EXISTS "Users can insert their own templates" ON agent_templates;
+DROP POLICY IF EXISTS "Users can update their own templates" ON agent_templates;
+DROP POLICY IF EXISTS "Users can delete their own templates" ON agent_templates;
+
 -- RLS Policies for agent_templates
 CREATE POLICY "Users can view public templates and their own" ON agent_templates
-  FOR SELECT USING (is_public = true OR auth.uid() = created_by);
+  FOR SELECT USING (is_public = true OR auth.uid() = created_by OR is_active = true);
 
 CREATE POLICY "Users can insert their own templates" ON agent_templates
   FOR INSERT WITH CHECK (auth.uid() = created_by);
@@ -245,11 +242,20 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Triggers for updated_at
+-- Triggers for updated_at (drop existing first to avoid conflicts)
+DROP TRIGGER IF EXISTS update_agent_workflows_updated_at ON agent_workflows;
 CREATE TRIGGER update_agent_workflows_updated_at BEFORE UPDATE ON agent_workflows FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_agent_personas_updated_at ON agent_personas;
 CREATE TRIGGER update_agent_personas_updated_at BEFORE UPDATE ON agent_personas FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_agent_templates_updated_at ON agent_templates;
 CREATE TRIGGER update_agent_templates_updated_at BEFORE UPDATE ON agent_templates FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_workflow_node_definitions_updated_at ON workflow_node_definitions;
 CREATE TRIGGER update_workflow_node_definitions_updated_at BEFORE UPDATE ON workflow_node_definitions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+DROP TRIGGER IF EXISTS update_persona_creation_sessions_updated_at ON persona_creation_sessions;
 CREATE TRIGGER update_persona_creation_sessions_updated_at BEFORE UPDATE ON persona_creation_sessions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Insert default workflow node definitions
@@ -313,31 +319,33 @@ INSERT INTO workflow_node_definitions (type, name, description, category, icon, 
  '{"response_type": {"type": "string"}, "metadata": {"type": "object"}}'
 );
 
--- Insert sample agent templates
-INSERT INTO agent_templates (name, description, category, tags, configuration, customization_options, setup_instructions, metadata, is_official, is_public) VALUES
-('Customer Support Agent', 'Comprehensive support assistant that handles tickets, searches knowledge bases, and escalates complex issues seamlessly.', 'customer_service', 
- ARRAY['support', 'tickets', 'knowledge_base', 'escalation'], 
- '{"channels": ["whatsapp", "web_chat"], "integrations": ["knowledge_base"], "features": ["sentiment_analysis", "escalation"]}',
- '[{"type": "channel_selection", "title": "Communication Channels", "options": ["whatsapp", "slack", "web_chat", "email"]}, {"type": "integration_selection", "title": "Integrations", "options": ["hubspot", "zendesk", "knowledge_base", "slack"]}]',
- '[{"step": 1, "title": "Configure Channels", "description": "Select and configure your communication channels"}, {"step": 2, "title": "Connect Knowledge Base", "description": "Link your knowledge base for accurate responses"}, {"step": 3, "title": "Set Escalation Rules", "description": "Define when to escalate to human agents"}]',
- '{"difficulty": "beginner", "setup_time": "10 minutes", "features": ["24/7 availability", "Multi-language support", "Sentiment analysis"]}',
- true, true
-),
+-- Update existing templates with new fields
+UPDATE agent_templates SET 
+  tags = ARRAY['support', 'tickets', 'knowledge_base', 'escalation'],
+  configuration = '{"channels": ["whatsapp", "web_chat"], "integrations": ["knowledge_base"], "features": ["sentiment_analysis", "escalation"]}',
+  customization_options = '[{"type": "channel_selection", "title": "Communication Channels", "options": ["whatsapp", "slack", "web_chat", "email"]}, {"type": "integration_selection", "title": "Integrations", "options": ["hubspot", "zendesk", "knowledge_base", "slack"]}]',
+  setup_instructions = '[{"step": 1, "title": "Configure Channels", "description": "Select and configure your communication channels"}, {"step": 2, "title": "Connect Knowledge Base", "description": "Link your knowledge base for accurate responses"}, {"step": 3, "title": "Set Escalation Rules", "description": "Define when to escalate to human agents"}]',
+  metadata = '{"difficulty": "beginner", "setup_time": "10 minutes", "features": ["24/7 availability", "Multi-language support", "Sentiment analysis"]}',
+  is_official = true,
+  is_public = true
+WHERE name = 'Customer Support Agent';
 
-('Sales Agent', 'Intelligent sales assistant that qualifies leads, manages CRM data, and automates follow-ups to boost your conversion rates.', 'sales',
- ARRAY['sales', 'crm', 'leads', 'follow_up'],
- '{"channels": ["web_chat", "email"], "integrations": ["crm"], "features": ["lead_qualification", "follow_up"]}',
- '[{"type": "crm_selection", "title": "CRM Integration", "options": ["hubspot", "salesforce", "pipedrive", "custom"]}, {"type": "qualification_criteria", "title": "Lead Qualification", "options": ["budget", "authority", "need", "timeline"]}]',
- '[{"step": 1, "title": "Connect CRM", "description": "Integrate with your CRM system"}, {"step": 2, "title": "Define Lead Criteria", "description": "Set qualification parameters"}, {"step": 3, "title": "Configure Follow-ups", "description": "Set automated follow-up sequences"}]',
- '{"difficulty": "intermediate", "setup_time": "15 minutes", "features": ["Lead scoring", "CRM integration", "Automated follow-ups"]}',
- true, true
-),
+UPDATE agent_templates SET 
+  tags = ARRAY['sales', 'crm', 'leads', 'follow_up'],
+  configuration = '{"channels": ["web_chat", "email"], "integrations": ["crm"], "features": ["lead_qualification", "follow_up"]}',
+  customization_options = '[{"type": "crm_selection", "title": "CRM Integration", "options": ["hubspot", "salesforce", "pipedrive", "custom"]}, {"type": "qualification_criteria", "title": "Lead Qualification", "options": ["budget", "authority", "need", "timeline"]}]',
+  setup_instructions = '[{"step": 1, "title": "Connect CRM", "description": "Integrate with your CRM system"}, {"step": 2, "title": "Define Lead Criteria", "description": "Set qualification parameters"}, {"step": 3, "title": "Configure Follow-ups", "description": "Set automated follow-up sequences"}]',
+  metadata = '{"difficulty": "intermediate", "setup_time": "15 minutes", "features": ["Lead scoring", "CRM integration", "Automated follow-ups"]}',
+  is_official = true,
+  is_public = true
+WHERE name = 'Sales Agent';
 
-('E-commerce Assistant', 'Shopping assistant that helps customers find products, track orders, and process returns with integrated payment support.', 'ecommerce',
- ARRAY['ecommerce', 'shopping', 'orders', 'returns'],
- '{"channels": ["web_chat", "whatsapp"], "integrations": ["ecommerce_platform"], "features": ["product_search", "order_tracking"]}',
- '[{"type": "platform_selection", "title": "E-commerce Platform", "options": ["shopify", "woocommerce", "magento", "custom"]}, {"type": "payment_integration", "title": "Payment Processing", "options": ["stripe", "paypal", "square"]}]',
- '[{"step": 1, "title": "Connect Store", "description": "Link your e-commerce platform"}, {"step": 2, "title": "Configure Products", "description": "Set up product catalog access"}, {"step": 3, "title": "Enable Payments", "description": "Configure payment processing"}]',
- '{"difficulty": "intermediate", "setup_time": "20 minutes", "features": ["Product recommendations", "Order tracking", "Return processing"]}',
- true, true
-);
+UPDATE agent_templates SET 
+  tags = ARRAY['ecommerce', 'shopping', 'orders', 'returns'],
+  configuration = '{"channels": ["web_chat", "whatsapp"], "integrations": ["ecommerce_platform"], "features": ["product_search", "order_tracking"]}',
+  customization_options = '[{"type": "platform_selection", "title": "E-commerce Platform", "options": ["shopify", "woocommerce", "magento", "custom"]}, {"type": "payment_integration", "title": "Payment Processing", "options": ["stripe", "paypal", "square"]}]',
+  setup_instructions = '[{"step": 1, "title": "Connect Store", "description": "Link your e-commerce platform"}, {"step": 2, "title": "Configure Products", "description": "Set up product catalog access"}, {"step": 3, "title": "Enable Payments", "description": "Configure payment processing"}]',
+  metadata = '{"difficulty": "intermediate", "setup_time": "20 minutes", "features": ["Product recommendations", "Order tracking", "Return processing"]}',
+  is_official = true,
+  is_public = true
+WHERE name = 'E-commerce Assistant';

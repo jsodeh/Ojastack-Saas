@@ -4,7 +4,49 @@
  */
 
 import { supabase } from './supabase';
-import { templateManager, type AgentTemplate, type TemplateCategory } from './template-manager';
+import { templateManager, type AgentTemplate, type TemplateCategory, type TemplateMetadata, type TemplatePreviewData } from './template-manager';
+
+// Database response types - using a different name to avoid conflict
+interface DatabaseTemplateMetadata {
+  features?: string[];
+  use_cases?: string[];
+  screenshots?: string[];
+  integrations?: string[];
+  demo_conversation?: any[];
+  difficulty?: string;
+  setup_time?: string;
+  version?: string;
+  author?: string;
+  license?: string;
+  compatibility?: any;
+  [key: string]: any;
+}
+
+interface DatabaseTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  tags: string[] | null;
+  configuration: Record<string, any> | null;
+  customization_options: any[] | null;
+  setup_instructions: any[] | null;
+  metadata: DatabaseTemplateMetadata | null;
+  is_official: boolean | null;
+  is_public: boolean | null;
+  usage_count: number | null;
+  rating: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+interface TemplateAnalytics {
+  template_id: string;
+  usage_count: number;
+  rating_count?: number;
+  average_rating?: number;
+}
 
 export interface UserPreferences {
   userId: string;
@@ -54,13 +96,66 @@ export interface RecommendationOptions {
 export class TemplateRecommendationEngine {
   private static instance: TemplateRecommendationEngine;
   private userPreferences: Map<string, UserPreferences> = new Map();
-  private templateSimilarity: Map<string, Map<string, number>> = new Map();
+  // Note: templateSimilarity cache could be used for performance optimization in the future
+  // private templateSimilarity: Map<string, Map<string, number>> = new Map();
 
   static getInstance(): TemplateRecommendationEngine {
     if (!TemplateRecommendationEngine.instance) {
       TemplateRecommendationEngine.instance = new TemplateRecommendationEngine();
     }
     return TemplateRecommendationEngine.instance;
+  }
+
+  /**
+   * Convert database template to AgentTemplate format
+   */
+  private convertDatabaseTemplate(dbTemplate: DatabaseTemplate): AgentTemplate {
+    // Create proper TemplateMetadata structure
+    const metadata: TemplateMetadata = {
+      version: dbTemplate.metadata?.version || '1.0.0',
+      author: dbTemplate.metadata?.author || 'Unknown',
+      license: dbTemplate.metadata?.license || 'MIT',
+      supportUrl: dbTemplate.metadata?.supportUrl,
+      documentationUrl: dbTemplate.metadata?.documentationUrl,
+      changeLog: dbTemplate.metadata?.changeLog || [],
+      compatibility: dbTemplate.metadata?.compatibility || {
+        minVersion: '1.0.0',
+        requiredFeatures: []
+      }
+    };
+
+    // Create proper TemplatePreviewData structure
+    const previewData: TemplatePreviewData = {
+      screenshots: dbTemplate.metadata?.screenshots || [],
+      features: dbTemplate.metadata?.features || [],
+      useCases: dbTemplate.metadata?.use_cases || [],
+      integrations: dbTemplate.metadata?.integrations || [],
+      demoConversation: dbTemplate.metadata?.demo_conversation?.map((item: any) => ({
+        role: item.role || 'user',
+        message: item.message || '',
+        timestamp: item.timestamp
+      }))
+    };
+
+    return {
+      id: dbTemplate.id,
+      name: dbTemplate.name,
+      description: dbTemplate.description,
+      category: dbTemplate.category as TemplateCategory,
+      tags: dbTemplate.tags || [],
+      configuration: dbTemplate.configuration || {},
+      customizationOptions: dbTemplate.customization_options || [],
+      setupInstructions: dbTemplate.setup_instructions || [],
+      metadata,
+      previewData,
+      isOfficial: dbTemplate.is_official || false,
+      isPublic: dbTemplate.is_public || false,
+      usageCount: dbTemplate.usage_count || 0,
+      rating: dbTemplate.rating || 0,
+      createdBy: dbTemplate.created_by,
+      createdAt: dbTemplate.created_at,
+      updatedAt: dbTemplate.updated_at
+    };
   }
 
   /**
@@ -73,7 +168,7 @@ export class TemplateRecommendationEngine {
     try {
       // Load user preferences
       const preferences = await this.getUserPreferences(userId);
-      
+
       // Get all available templates
       const { templates: allTemplates } = await templateManager.searchTemplates({
         isPublic: true,
@@ -89,7 +184,7 @@ export class TemplateRecommendationEngine {
 
       // Filter by categories if specified
       if (options.categories && options.categories.length > 0) {
-        candidateTemplates = candidateTemplates.filter(t => 
+        candidateTemplates = candidateTemplates.filter(t =>
           options.categories!.includes(t.category)
         );
       }
@@ -170,30 +265,76 @@ export class TemplateRecommendationEngine {
       const since = new Date();
       since.setDate(since.getDate() - days);
 
-      // Get templates with recent activity
-      const { data, error } = await supabase
+      // First, get trending template IDs from analytics
+      const { data: analyticsData, error: analyticsError } = await supabase
         .from('template_usage_analytics')
-        .select(`
-          template_id,
-          usage_count,
-          rating_count,
-          average_rating,
-          agent_templates(*)
-        `)
+        .select('template_id, usage_count')
         .gte('date', since.toISOString().split('T')[0])
         .order('usage_count', { ascending: false })
         .limit(limit);
 
-      if (error) throw error;
+      if (analyticsError) throw analyticsError;
 
-      return (data || [])
-        .map(item => item.agent_templates)
-        .filter(Boolean)
-        .map(templateManager.prototype.transformTemplateData);
+      if (!analyticsData || analyticsData.length === 0) {
+        // Fallback to most popular templates overall
+        const { templates } = await templateManager.searchTemplates({
+          isPublic: true
+        }, 1, limit);
+        return templates;
+      }
+
+      // Get the actual template data
+      const templateIds = analyticsData.map(item => item.template_id);
+      const { data: templatesData, error: templatesError } = await supabase
+        .from('agent_templates')
+        .select(`
+          id,
+          name,
+          description,
+          category,
+          tags,
+          configuration,
+          customization_options,
+          setup_instructions,
+          metadata,
+          is_official,
+          is_public,
+          usage_count,
+          rating,
+          created_by,
+          created_at,
+          updated_at
+        `)
+        .in('id', templateIds)
+        .eq('is_public', true);
+
+      if (templatesError) throw templatesError;
+
+      // Map to AgentTemplate format with all required properties
+      const templates: AgentTemplate[] = (templatesData as DatabaseTemplate[] || [])
+        .map(template => this.convertDatabaseTemplate(template));
+
+      // Sort by analytics usage count to maintain trending order
+      const sortedTemplates = templates.sort((a, b) => {
+        const aUsage = analyticsData.find(item => item.template_id === a.id)?.usage_count || 0;
+        const bUsage = analyticsData.find(item => item.template_id === b.id)?.usage_count || 0;
+        return bUsage - aUsage;
+      });
+
+      return sortedTemplates;
 
     } catch (error) {
       console.error('Failed to get trending templates:', error);
-      return [];
+      // Fallback to template manager search
+      try {
+        const { templates } = await templateManager.searchTemplates({
+          isPublic: true
+        }, 1, limit);
+        return templates;
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        return [];
+      }
     }
   }
 
@@ -209,13 +350,15 @@ export class TemplateRecommendationEngine {
       // Update user preferences
       const preferences = await this.getUserPreferences(userId);
       if (preferences) {
-        preferences.usageHistory.push({
+        const newUsage: TemplateUsage = {
           templateId,
           usedAt: new Date().toISOString(),
-          completed: false,
-          customizations: {},
-          ...usage
-        });
+          completed: usage.completed || false,
+          customizations: usage.customizations || {},
+          duration: usage.duration
+        };
+
+        preferences.usageHistory.push(newUsage);
 
         // Keep only last 50 usage records
         if (preferences.usageHistory.length > 50) {
@@ -226,7 +369,7 @@ export class TemplateRecommendationEngine {
       }
 
       // Record in analytics table
-      await supabase
+      const { error: analyticsError } = await supabase
         .from('template_usage_analytics')
         .upsert({
           template_id: templateId,
@@ -237,6 +380,11 @@ export class TemplateRecommendationEngine {
           onConflict: 'template_id,user_id,date',
           ignoreDuplicates: false
         });
+
+      if (analyticsError) {
+        console.warn('Failed to record analytics:', analyticsError);
+        // Don't throw here as user preferences were saved successfully
+      }
 
     } catch (error) {
       console.error('Failed to record template usage:', error);
@@ -408,7 +556,7 @@ export class TemplateRecommendationEngine {
         }
 
         // Tag preference match
-        const matchingTags = template.tags.filter(tag => 
+        const matchingTags = template.tags.filter(tag =>
           preferences.preferredTags.includes(tag)
         );
         if (matchingTags.length > 0) {
@@ -429,7 +577,7 @@ export class TemplateRecommendationEngine {
         if (usageScore > 0 && includeReasons) {
           reasons.push({
             type: 'usage_pattern',
-            description: 'Similar to templates you\'ve used before',
+            description: 'Based on your usage patterns and preferences',
             weight: usageScore
           });
         }
@@ -505,18 +653,33 @@ export class TemplateRecommendationEngine {
   private calculateUsagePatternScore(template: AgentTemplate, preferences: UserPreferences): number {
     let score = 0;
 
-    // Check if user has used similar templates
-    const similarUsage = preferences.usageHistory.filter(usage => {
-      // This would ideally check template similarity
-      // For now, just check category match
-      return true; // Simplified
-    });
-
-    if (similarUsage.length > 0) {
-      score += Math.min(similarUsage.length * 0.2, 1.0);
+    // Simple scoring based on usage history length and completion rate
+    const totalUsage = preferences.usageHistory.length;
+    if (totalUsage > 0) {
+      score += Math.min(totalUsage * 0.1, 0.5);
     }
 
-    return score;
+    // Bonus for completed usage patterns
+    const completedUsage = preferences.usageHistory.filter(usage => usage.completed);
+    if (completedUsage.length > 0) {
+      const completionRate = completedUsage.length / totalUsage;
+      score += completionRate * 0.3;
+    }
+
+    // Check if user has preferred tags that match this template
+    const matchingPreferredTags = template.tags.filter(tag =>
+      preferences.preferredTags.includes(tag)
+    );
+    if (matchingPreferredTags.length > 0) {
+      score += Math.min(matchingPreferredTags.length * 0.2, 0.6);
+    }
+
+    // Check if user has preferred categories that match
+    if (preferences.preferredCategories.includes(template.category)) {
+      score += 0.4;
+    }
+
+    return Math.min(score, 2.0); // Cap the score
   }
 
   /**
@@ -549,7 +712,7 @@ export class TemplateRecommendationEngine {
     ];
 
     const searchLower = searchTerm.toLowerCase();
-    return commonTags.filter(tag => 
+    return commonTags.filter(tag =>
       searchLower.includes(tag.replace('-', ' ')) || searchLower.includes(tag)
     );
   }

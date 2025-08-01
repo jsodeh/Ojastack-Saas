@@ -147,16 +147,20 @@ ALTER TABLE deployment_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE deployment_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE test_execution_logs ENABLE ROW LEVEL SECURITY;
 
--- Policies for agent_deployments
+-- Policies for agent_deployments (drop existing first to avoid conflicts)
+DROP POLICY IF EXISTS "Users can view their own deployments" ON agent_deployments;
 CREATE POLICY "Users can view their own deployments" ON agent_deployments
     FOR SELECT USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can create their own deployments" ON agent_deployments;
 CREATE POLICY "Users can create their own deployments" ON agent_deployments
     FOR INSERT WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their own deployments" ON agent_deployments;
 CREATE POLICY "Users can update their own deployments" ON agent_deployments
     FOR UPDATE USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete their own deployments" ON agent_deployments;
 CREATE POLICY "Users can delete their own deployments" ON agent_deployments
     FOR DELETE USING (auth.uid() = user_id);
 
@@ -254,16 +258,13 @@ CREATE OR REPLACE VIEW deployment_summary AS
 SELECT 
     d.id,
     d.user_id,
-    d.name,
+    d.agent_id,
+    d.workflow_id,
+    d.persona_id,
     d.status,
-    d.health_status,
     d.created_at,
-    d.updated_at,
     d.deployed_at,
     d.last_active,
-    COALESCE(array_length(d.endpoints, 1), 0) as endpoint_count,
-    COALESCE(array_length(d.channel_configs, 1), 0) as channel_count,
-    COALESCE(array_length(d.integration_configs, 1), 0) as integration_count,
     (d.metrics->>'uptime')::decimal as uptime,
     (d.metrics->>'responseTime')::integer as response_time,
     (d.metrics->>'requestCount')::integer as request_count,
@@ -281,7 +282,7 @@ SELECT
     ts.created_at,
     ts.updated_at,
     ts.last_run_at,
-    COALESCE(array_length(ts.test_cases, 1), 0) as test_case_count,
+    COALESCE(jsonb_array_length(ts.test_cases), 0) as test_case_count,
     CASE 
         WHEN ts.results IS NOT NULL THEN (ts.results->'summary'->>'passRate')::decimal
         ELSE NULL 

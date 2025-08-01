@@ -10,13 +10,13 @@ CREATE TABLE IF NOT EXISTS voice_audio_files (
   format TEXT NOT NULL,
   role TEXT CHECK (role IN ('user', 'agent')) NOT NULL,
   quality_score DECIMAL(3,2),
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Indexes for performance
-  INDEX idx_voice_audio_files_conversation_id (conversation_id),
-  INDEX idx_voice_audio_files_message_id (message_id),
-  INDEX idx_voice_audio_files_created_at (created_at)
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Create indexes for performance
+CREATE INDEX IF NOT EXISTS idx_voice_audio_files_conversation_id ON voice_audio_files (conversation_id);
+CREATE INDEX IF NOT EXISTS idx_voice_audio_files_message_id ON voice_audio_files (message_id);
+CREATE INDEX IF NOT EXISTS idx_voice_audio_files_created_at ON voice_audio_files (created_at);
 
 -- Enable Row Level Security
 ALTER TABLE voice_audio_files ENABLE ROW LEVEL SECURITY;

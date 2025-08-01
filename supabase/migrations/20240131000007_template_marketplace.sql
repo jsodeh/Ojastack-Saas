@@ -14,8 +14,8 @@ CREATE TABLE user_template_preferences (
     search_history TEXT[] DEFAULT '{}',
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
     -- Constraints
     UNIQUE(user_id)
@@ -43,13 +43,10 @@ CREATE TABLE template_usage_analytics (
     metrics JSONB NOT NULL DEFAULT '{}',
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
-    -- Indexes
-    INDEX idx_template_analytics_template_date (template_id, date),
-    INDEX idx_template_analytics_date (date),
-    INDEX idx_template_analytics_user (user_id),
+    -- Indexes moved to end of file
     UNIQUE(template_id, user_id, date)
 );
 
@@ -70,14 +67,10 @@ CREATE TABLE template_collections (
     created_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
-    -- Indexes
-    INDEX idx_template_collections_slug (slug),
-    INDEX idx_template_collections_featured (is_featured),
-    INDEX idx_template_collections_public (is_public),
-    INDEX idx_template_collections_creator (created_by)
+    -- Indexes moved to end of file
 );
 
 -- Template collection items (templates in collections)
@@ -91,15 +84,12 @@ CREATE TABLE template_collection_items (
     description TEXT, -- Custom description for this template in this collection
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
     -- Constraints
     UNIQUE(collection_id, template_id),
     
-    -- Indexes
-    INDEX idx_collection_items_collection (collection_id),
-    INDEX idx_collection_items_template (template_id),
-    INDEX idx_collection_items_position (collection_id, position)
+    -- Indexes moved to end of file
 );
 
 -- Template forks (track template derivations)
@@ -114,15 +104,12 @@ CREATE TABLE template_forks (
     fork_reason TEXT,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
     -- Constraints
     UNIQUE(forked_template_id), -- Each template can only be a fork of one original
     
-    -- Indexes
-    INDEX idx_template_forks_original (original_template_id),
-    INDEX idx_template_forks_forked (forked_template_id),
-    INDEX idx_template_forks_user (forked_by)
+    -- Indexes moved to end of file
 );
 
 -- Template downloads/installs tracking
@@ -142,16 +129,12 @@ CREATE TABLE template_installations (
     usage_count INTEGER NOT NULL DEFAULT 0,
     
     -- Timestamps
-    installed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    installed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
     -- Constraints
     UNIQUE(template_id, user_id),
     
-    -- Indexes
-    INDEX idx_template_installations_template (template_id),
-    INDEX idx_template_installations_user (user_id),
-    INDEX idx_template_installations_date (installed_at),
-    INDEX idx_template_installations_completed (setup_completed)
+    -- Indexes moved to end of file
 );
 
 -- Template marketplace categories (enhanced categorization)
@@ -172,15 +155,10 @@ CREATE TABLE template_marketplace_categories (
     is_active BOOLEAN NOT NULL DEFAULT true,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
-    -- Indexes
-    INDEX idx_marketplace_categories_slug (slug),
-    INDEX idx_marketplace_categories_parent (parent_id),
-    INDEX idx_marketplace_categories_featured (is_featured),
-    INDEX idx_marketplace_categories_active (is_active),
-    INDEX idx_marketplace_categories_order (display_order)
+    -- Indexes moved to end of file
 );
 
 -- Template tags (normalized tag system)
@@ -196,13 +174,10 @@ CREATE TABLE template_tags (
     is_featured BOOLEAN NOT NULL DEFAULT false,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
-    -- Indexes
-    INDEX idx_template_tags_slug (slug),
-    INDEX idx_template_tags_usage (usage_count),
-    INDEX idx_template_tags_featured (is_featured)
+    -- Indexes moved to end of file
 );
 
 -- Template tag associations
@@ -216,15 +191,12 @@ CREATE TABLE template_tag_associations (
     added_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
     
     -- Timestamps
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
     
     -- Constraints
     UNIQUE(template_id, tag_id),
     
-    -- Indexes
-    INDEX idx_template_tag_assoc_template (template_id),
-    INDEX idx_template_tag_assoc_tag (tag_id),
-    INDEX idx_template_tag_assoc_relevance (relevance_score)
+    -- Indexes moved to end of file
 );
 
 -- Row Level Security (RLS) Policies
@@ -429,4 +401,40 @@ COMMENT ON TABLE template_forks IS 'Tracks template derivations and customizatio
 COMMENT ON TABLE template_installations IS 'Tracks template downloads and installations';
 COMMENT ON TABLE template_marketplace_categories IS 'Enhanced categorization for marketplace';
 COMMENT ON TABLE template_tags IS 'Normalized tag system for templates';
-COMMENT ON TABLE template_tag_associations IS 'Many-to-many relationship between templates and tags';
+COMMENT ON TABLE template_tag_associations IS 'Many-to-many relationship between templates and tags';-- Create 
+all indexes for performance
+CREATE INDEX IF NOT EXISTS idx_template_analytics_template_date ON template_usage_analytics (template_id, date);
+CREATE INDEX IF NOT EXISTS idx_template_analytics_date ON template_usage_analytics (date);
+CREATE INDEX IF NOT EXISTS idx_template_analytics_user ON template_usage_analytics (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_template_collections_slug ON template_collections (slug);
+CREATE INDEX IF NOT EXISTS idx_template_collections_featured ON template_collections (is_featured);
+CREATE INDEX IF NOT EXISTS idx_template_collections_public ON template_collections (is_public);
+CREATE INDEX IF NOT EXISTS idx_template_collections_creator ON template_collections (created_by);
+
+CREATE INDEX IF NOT EXISTS idx_collection_items_collection ON template_collection_items (collection_id);
+CREATE INDEX IF NOT EXISTS idx_collection_items_template ON template_collection_items (template_id);
+CREATE INDEX IF NOT EXISTS idx_collection_items_position ON template_collection_items (collection_id, position);
+
+CREATE INDEX IF NOT EXISTS idx_template_forks_original ON template_forks (original_template_id);
+CREATE INDEX IF NOT EXISTS idx_template_forks_forked ON template_forks (forked_template_id);
+CREATE INDEX IF NOT EXISTS idx_template_forks_user ON template_forks (forked_by);
+
+CREATE INDEX IF NOT EXISTS idx_template_installations_template ON template_installations (template_id);
+CREATE INDEX IF NOT EXISTS idx_template_installations_user ON template_installations (user_id);
+CREATE INDEX IF NOT EXISTS idx_template_installations_date ON template_installations (installed_at);
+CREATE INDEX IF NOT EXISTS idx_template_installations_completed ON template_installations (setup_completed);
+
+CREATE INDEX IF NOT EXISTS idx_marketplace_categories_slug ON template_marketplace_categories (slug);
+CREATE INDEX IF NOT EXISTS idx_marketplace_categories_parent ON template_marketplace_categories (parent_id);
+CREATE INDEX IF NOT EXISTS idx_marketplace_categories_featured ON template_marketplace_categories (is_featured);
+CREATE INDEX IF NOT EXISTS idx_marketplace_categories_active ON template_marketplace_categories (is_active);
+CREATE INDEX IF NOT EXISTS idx_marketplace_categories_order ON template_marketplace_categories (display_order);
+
+CREATE INDEX IF NOT EXISTS idx_template_tags_slug ON template_tags (slug);
+CREATE INDEX IF NOT EXISTS idx_template_tags_usage ON template_tags (usage_count);
+CREATE INDEX IF NOT EXISTS idx_template_tags_featured ON template_tags (is_featured);
+
+CREATE INDEX IF NOT EXISTS idx_template_tag_assoc_template ON template_tag_associations (template_id);
+CREATE INDEX IF NOT EXISTS idx_template_tag_assoc_tag ON template_tag_associations (tag_id);
+CREATE INDEX IF NOT EXISTS idx_template_tag_assoc_relevance ON template_tag_associations (relevance_score);

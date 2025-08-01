@@ -2,7 +2,7 @@
 -- Enables WhatsApp messaging to trigger and interact with visual workflows
 
 -- WhatsApp workflow configurations
-CREATE TABLE whatsapp_workflow_configs (
+CREATE TABLE IF NOT EXISTS whatsapp_workflow_configs (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     workflow_id UUID NOT NULL REFERENCES agent_workflows(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -22,7 +22,7 @@ CREATE TABLE whatsapp_workflow_configs (
 );
 
 -- WhatsApp conversations with workflow context
-CREATE TABLE whatsapp_conversations (
+CREATE TABLE IF NOT EXISTS whatsapp_conversations (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     phone_number TEXT NOT NULL,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -47,7 +47,7 @@ CREATE TABLE whatsapp_conversations (
 );
 
 -- WhatsApp message history (for analytics and debugging)
-CREATE TABLE whatsapp_message_history (
+CREATE TABLE IF NOT EXISTS whatsapp_message_history (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     conversation_id UUID REFERENCES whatsapp_conversations(id) ON DELETE CASCADE,
     message_id TEXT NOT NULL, -- WhatsApp message ID
@@ -74,7 +74,7 @@ CREATE TABLE whatsapp_message_history (
 );
 
 -- WhatsApp workflow triggers (for advanced trigger conditions)
-CREATE TABLE whatsapp_workflow_triggers (
+CREATE TABLE IF NOT EXISTS whatsapp_workflow_triggers (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     config_id UUID NOT NULL REFERENCES whatsapp_workflow_configs(id) ON DELETE CASCADE,
     
@@ -97,7 +97,7 @@ CREATE TABLE whatsapp_workflow_triggers (
 );
 
 -- WhatsApp workflow analytics
-CREATE TABLE whatsapp_workflow_analytics (
+CREATE TABLE IF NOT EXISTS whatsapp_workflow_analytics (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     workflow_id UUID NOT NULL REFERENCES agent_workflows(id) ON DELETE CASCADE,
@@ -225,9 +225,9 @@ CREATE TRIGGER update_whatsapp_workflow_analytics_updated_at
     EXECUTE FUNCTION update_whatsapp_workflow_analytics_updated_at();
 
 -- Indexes for performance
-CREATE INDEX idx_whatsapp_workflow_configs_user_active ON whatsapp_workflow_configs(user_id, is_active);
-CREATE INDEX idx_whatsapp_workflow_configs_workflow ON whatsapp_workflow_configs(workflow_id);
-CREATE INDEX idx_whatsapp_workflow_configs_credential ON whatsapp_workflow_configs(credential_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_workflow_configs_user_active ON whatsapp_workflow_configs(user_id, is_active);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_workflow_configs_workflow ON whatsapp_workflow_configs(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_workflow_configs_credential ON whatsapp_workflow_configs(credential_id);
 
 -- Comments for documentation
 COMMENT ON TABLE whatsapp_workflow_configs IS 'Configuration for WhatsApp workflow integrations';

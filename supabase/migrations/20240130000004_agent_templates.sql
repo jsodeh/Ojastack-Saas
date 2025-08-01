@@ -1,8 +1,11 @@
 -- Agent Templates System Migration
 -- Creates tables for template management and agent creation
 
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS vector;
+
 -- Agent Templates table
-CREATE TABLE agent_templates (
+CREATE TABLE IF NOT EXISTS agent_templates (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
   category TEXT CHECK (category IN ('sales', 'support', 'internal', 'ecommerce', 'booking', 'custom')) NOT NULL,
@@ -52,7 +55,7 @@ CREATE TABLE agent_templates (
 );
 
 -- Knowledge Bases table
-CREATE TABLE knowledge_bases (
+CREATE TABLE IF NOT EXISTS knowledge_bases (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -82,7 +85,7 @@ CREATE TABLE knowledge_bases (
 );
 
 -- Knowledge Base Files table
-CREATE TABLE knowledge_base_files (
+CREATE TABLE IF NOT EXISTS knowledge_base_files (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   knowledge_base_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
   filename TEXT NOT NULL,
@@ -103,7 +106,7 @@ CREATE TABLE knowledge_base_files (
 );
 
 -- Knowledge Base Chunks table (for vector search)
-CREATE TABLE knowledge_base_chunks (
+CREATE TABLE IF NOT EXISTS knowledge_base_chunks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   file_id UUID REFERENCES knowledge_base_files(id) ON DELETE CASCADE,
   knowledge_base_id UUID REFERENCES knowledge_bases(id) ON DELETE CASCADE,
@@ -132,7 +135,7 @@ ALTER TABLE agents ADD COLUMN IF NOT EXISTS workflow_ids TEXT[] DEFAULT '{}';
 ALTER TABLE agents ADD COLUMN IF NOT EXISTS integration_configs JSONB DEFAULT '{}';
 
 -- Agent Template Usage tracking
-CREATE TABLE agent_template_usage (
+CREATE TABLE IF NOT EXISTS agent_template_usage (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   template_id UUID REFERENCES agent_templates(id) ON DELETE CASCADE,
   user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -146,22 +149,22 @@ CREATE TABLE agent_template_usage (
 );
 
 -- Indexes for performance
-CREATE INDEX idx_agent_templates_category ON agent_templates(category);
-CREATE INDEX idx_agent_templates_active ON agent_templates(is_active) WHERE is_active = true;
-CREATE INDEX idx_agent_templates_featured ON agent_templates(is_featured) WHERE is_featured = true;
+CREATE INDEX IF NOT EXISTS idx_agent_templates_category ON agent_templates(category);
+CREATE INDEX IF NOT EXISTS idx_agent_templates_active ON agent_templates(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_agent_templates_featured ON agent_templates(is_featured) WHERE is_featured = true;
 
-CREATE INDEX idx_knowledge_bases_user_id ON knowledge_bases(user_id);
-CREATE INDEX idx_knowledge_bases_status ON knowledge_bases(status);
-CREATE INDEX idx_knowledge_bases_type ON knowledge_bases(type);
+CREATE INDEX IF NOT EXISTS idx_knowledge_bases_user_id ON knowledge_bases(user_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_bases_status ON knowledge_bases(status);
+-- CREATE INDEX IF NOT EXISTS idx_knowledge_bases_type ON knowledge_bases(type); -- Column may not exist
 
-CREATE INDEX idx_knowledge_base_files_kb_id ON knowledge_base_files(knowledge_base_id);
-CREATE INDEX idx_knowledge_base_files_status ON knowledge_base_files(embedding_status);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_files_kb_id ON knowledge_base_files(knowledge_base_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_files_status ON knowledge_base_files(embedding_status);
 
-CREATE INDEX idx_knowledge_base_chunks_kb_id ON knowledge_base_chunks(knowledge_base_id);
-CREATE INDEX idx_knowledge_base_chunks_file_id ON knowledge_base_chunks(file_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_chunks_kb_id ON knowledge_base_chunks(knowledge_base_id);
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_chunks_file_id ON knowledge_base_chunks(file_id);
 
 -- Vector similarity search index (requires pgvector extension)
-CREATE INDEX idx_knowledge_base_chunks_embedding ON knowledge_base_chunks 
+CREATE INDEX IF NOT EXISTS idx_knowledge_base_chunks_embedding ON knowledge_base_chunks 
 USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 
 -- Row Level Security (RLS) policies
@@ -179,8 +182,8 @@ CREATE POLICY "Agent templates are publicly readable" ON agent_templates
 CREATE POLICY "Users can manage their own knowledge bases" ON knowledge_bases
   FOR ALL USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can view public knowledge bases" ON knowledge_bases
-  FOR SELECT USING (is_public = true OR auth.uid() = user_id);
+-- CREATE POLICY "Users can view public knowledge bases" ON knowledge_bases
+--   FOR SELECT USING (is_public = true OR auth.uid() = user_id);
 
 -- Knowledge base files follow knowledge base permissions
 CREATE POLICY "Knowledge base files follow parent permissions" ON knowledge_base_files
@@ -188,7 +191,7 @@ CREATE POLICY "Knowledge base files follow parent permissions" ON knowledge_base
     EXISTS (
       SELECT 1 FROM knowledge_bases kb 
       WHERE kb.id = knowledge_base_files.knowledge_base_id 
-      AND (kb.user_id = auth.uid() OR kb.is_public = true)
+      AND kb.user_id = auth.uid()
     )
   );
 
@@ -198,7 +201,7 @@ CREATE POLICY "Knowledge base chunks follow parent permissions" ON knowledge_bas
     EXISTS (
       SELECT 1 FROM knowledge_bases kb 
       WHERE kb.id = knowledge_base_chunks.knowledge_base_id 
-      AND (kb.user_id = auth.uid() OR kb.is_public = true)
+      AND kb.user_id = auth.uid()
     )
   );
 
@@ -436,11 +439,14 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
+DROP TRIGGER IF EXISTS update_agent_templates_updated_at ON agent_templates;
 CREATE TRIGGER update_agent_templates_updated_at BEFORE UPDATE ON agent_templates
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_knowledge_bases_updated_at ON knowledge_bases;
 CREATE TRIGGER update_knowledge_bases_updated_at BEFORE UPDATE ON knowledge_bases
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_knowledge_base_files_updated_at ON knowledge_base_files;
 CREATE TRIGGER update_knowledge_base_files_updated_at BEFORE UPDATE ON knowledge_base_files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

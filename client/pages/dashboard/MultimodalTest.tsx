@@ -330,34 +330,6 @@ const MultimodalTest: React.FC = () => {
             )}
           </div>
         )}
-
-        {/* Feature Overview */}
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Multimodal Features</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="text-4xl mb-3">🔄</div>
-              <h4 className="font-semibold text-gray-900 mb-2">Seamless Switching</h4>
-              <p className="text-sm text-gray-600">
-                Switch between text, voice, and video modes while preserving conversation context.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl mb-3">🧠</div>
-              <h4 className="font-semibold text-gray-900 mb-2">Context Preservation</h4>
-              <p className="text-sm text-gray-600">
-                Conversation history and context are maintained across all communication modes.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl mb-3">⚡</div>
-              <h4 className="font-semibold text-gray-900 mb-2">Quality Adaptation</h4>
-              <p className="text-sm text-gray-600">
-                Automatically adapts to network conditions and user preferences for optimal experience.
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

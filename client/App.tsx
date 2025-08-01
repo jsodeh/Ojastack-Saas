@@ -37,7 +37,7 @@ import WidgetContainer from "./components/WidgetContainer";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 import VideoTest from "./pages/dashboard/VideoTest";
-import MultimodalTest from "./pages/dashboard/MultimodalTest";
+// import MultimodalTest from "./pages/dashboard/MultimodalTest";
 import WorkflowTest from "./pages/dashboard/WorkflowTest";
 import AgentCreationWizard from "./components/agent-creation/AgentCreationWizard";
 import KnowledgeBaseManager from "./components/knowledge-base/KnowledgeBaseManager";
@@ -270,7 +270,7 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <MultimodalTest />
+                    <div>Multimodal Test - Temporarily Disabled</div>
                   </DashboardLayout>
                 </ProtectedRoute>
               }
