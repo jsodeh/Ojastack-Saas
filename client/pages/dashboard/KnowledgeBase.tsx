@@ -35,7 +35,7 @@ import {
   Settings
 } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+
 import { useToast } from "@/hooks/use-toast";
 
 interface KnowledgeBase {
@@ -197,8 +197,7 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -441,7 +440,7 @@ export default function KnowledgeBasePage() {
           onOpenChange={setIsUploadDialogOpen}
         />
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

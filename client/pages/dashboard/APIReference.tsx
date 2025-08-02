@@ -25,7 +25,7 @@ import {
   Download,
   Search
 } from "lucide-react";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+
 import { useToast } from "@/hooks/use-toast";
 
 interface APIEndpoint {
@@ -282,8 +282,7 @@ export default function APIReference() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -732,6 +731,6 @@ axios(config)
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

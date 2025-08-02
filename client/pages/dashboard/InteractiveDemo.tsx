@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 import { elevenLabs, audioManager, Voice } from "@/lib/elevenlabs";
 import { mcpClient, toolCallManager } from "@/lib/mcp-integration";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+
 import { useToast } from "@/hooks/use-toast";
 
 export default function InteractiveDemo() {
@@ -350,8 +350,7 @@ export default function InteractiveDemo() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -879,6 +878,6 @@ export default function InteractiveDemo() {
           </TabsContent>
         </Tabs>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

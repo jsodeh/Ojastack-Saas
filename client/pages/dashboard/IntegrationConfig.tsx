@@ -39,7 +39,7 @@ import {
   Users,
   BarChart3
 } from "lucide-react";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+
 import { useToast } from "@/hooks/use-toast";
 
 interface Integration {
@@ -203,8 +203,7 @@ export default function IntegrationConfig() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -399,7 +398,7 @@ export default function IntegrationConfig() {
           />
         )}
       </div>
-    </DashboardLayout>
+    </div>
   );
 }
 

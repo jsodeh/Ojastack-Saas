@@ -41,7 +41,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import DashboardLayout from "@/components/dashboard/DashboardLayout";
+
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/lib/auth-context";
 
@@ -138,8 +138,7 @@ export default function DashboardOverview() {
   };
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -499,6 +498,6 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

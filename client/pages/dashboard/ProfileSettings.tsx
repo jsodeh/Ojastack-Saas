@@ -16,7 +16,7 @@ import {
   Loader2,
   CheckCircle
 } from 'lucide-react';
-import DashboardLayout from '@/components/dashboard/DashboardLayout';
+
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
@@ -76,8 +76,7 @@ export default function ProfileSettings() {
 
   if (profileLoading) {
     return (
-      <DashboardLayout>
-        <div className="space-y-8">
+      <div className="space-y-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Profile Settings</h1>
@@ -101,13 +100,12 @@ export default function ProfileSettings() {
             </div>
           </div>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="space-y-8">
+    <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -273,6 +271,6 @@ export default function ProfileSettings() {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </div>
   );
 }

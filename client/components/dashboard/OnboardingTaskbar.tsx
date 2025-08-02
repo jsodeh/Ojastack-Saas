@@ -49,7 +49,7 @@ export default function OnboardingTaskbar() {
     <div className="fixed bottom-6 right-6 z-50">
       <Card className={cn(
         "transition-all duration-300 ease-in-out shadow-lg border-2",
-        isExpanded ? "w-96" : "w-80"
+        isExpanded ? "w-96 max-h-[calc(100vh-3rem)]" : "w-80"
       )}>
         {/* Header - Always visible */}
         <CardHeader className="pb-3">
@@ -115,39 +115,39 @@ export default function OnboardingTaskbar() {
 
         {/* Expanded content */}
         {isExpanded && (
-          <CardContent className="pt-0">
-            <div className="space-y-3">
+          <CardContent className="pt-0 overflow-y-auto max-h-[calc(100vh-12rem)] scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-transparent">
+            <div className="space-y-2">
               {/* High priority tasks first */}
               {highPriorityTasks.length > 0 && (
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center">
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1 flex items-center">
                     <Rocket className="h-3 w-3 mr-1" />
                     Priority Tasks
                   </h4>
-                  <div className="space-y-2">
-                    {highPriorityTasks.slice(0, 3).map((task) => (
+                                    <div className="space-y-1">
+                    {highPriorityTasks.slice(0, 2).map((task) => (
                       <div
                         key={task.id}
-                        className="flex items-start space-x-2 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                        className="flex items-start space-x-2 p-1.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                       >
-                        <Circle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                        <Circle className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium truncate">
+                            <p className="text-xs font-medium truncate">
                               {task.title}
                             </p>
                             <Badge 
                               variant="outline" 
-                              className={cn("text-xs ml-2", getPriorityColor(task.priority))}
+                              className={cn("text-xs ml-1", getPriorityColor(task.priority))}
                             >
                               {task.priority}
                             </Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {task.description}
                           </p>
                           {task.action && (
-                            <div className="mt-2">
+                            <div className="mt-1">
                               {task.action.href ? (
                                 <Link to={task.action.href}>
                                   <Button variant="outline" size="sm" className="h-6 text-xs">
@@ -169,6 +169,13 @@ export default function OnboardingTaskbar() {
                         </div>
                       </div>
                     ))}
+                    {highPriorityTasks.length > 2 && (
+                      <div className="text-center py-1">
+                        <span className="text-xs text-muted-foreground">
+                          +{highPriorityTasks.length - 2} more priority tasks
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -176,36 +183,36 @@ export default function OnboardingTaskbar() {
               {/* Other pending tasks */}
               {pendingTasks.filter(task => task.priority !== 'high').length > 0 && (
                 <div>
-                  <h4 className="text-xs font-medium text-muted-foreground mb-2">
+                  <h4 className="text-xs font-medium text-muted-foreground mb-1">
                     Other Tasks
                   </h4>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {pendingTasks
                       .filter(task => task.priority !== 'high')
-                      .slice(0, 4)
+                      .slice(0, 3)
                       .map((task) => (
                         <div
                           key={task.id}
-                          className="flex items-start space-x-2 p-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                          className="flex items-start space-x-2 p-1.5 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                         >
-                          <Circle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                          <Circle className="h-3 w-3 text-muted-foreground mt-0.5 flex-shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium truncate">
+                              <p className="text-xs font-medium truncate">
                                 {task.title}
                               </p>
                               <Badge 
                                 variant="outline" 
-                                className={cn("text-xs ml-2", getPriorityColor(task.priority))}
+                                className={cn("text-xs ml-1", getPriorityColor(task.priority))}
                               >
                                 {task.priority}
                               </Badge>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1">
+                            <p className="text-xs text-muted-foreground mt-0.5">
                               {task.description}
                             </p>
                             {task.action && (
-                              <div className="mt-2">
+                              <div className="mt-1">
                                 {task.action.href ? (
                                   <Link to={task.action.href}>
                                     <Button variant="outline" size="sm" className="h-6 text-xs">
@@ -227,13 +234,20 @@ export default function OnboardingTaskbar() {
                           </div>
                         </div>
                       ))}
+                    {pendingTasks.filter(task => task.priority !== 'high').length > 3 && (
+                      <div className="text-center py-1">
+                        <span className="text-xs text-muted-foreground">
+                          +{pendingTasks.filter(task => task.priority !== 'high').length - 3} more tasks
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Completed tasks summary */}
               {completedTasks.length > 0 && (
-                <div className="pt-2 border-t">
+                <div className="pt-1 border-t">
                   <div className="flex items-center space-x-2 text-xs text-muted-foreground">
                     <CheckCircle className="h-3 w-3 text-green-500" />
                     <span>{completedTasks.length} tasks completed</span>
@@ -242,7 +256,7 @@ export default function OnboardingTaskbar() {
               )}
 
               {/* Footer actions */}
-              <div className="pt-2 border-t">
+              <div className="pt-1 border-t">
                 <div className="flex items-center justify-between">
                   <Button
                     variant="ghost"
