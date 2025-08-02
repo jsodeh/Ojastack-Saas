@@ -205,7 +205,7 @@ export default function Agents() {
                     <div>
                       <CardTitle className="text-lg">{agent.name}</CardTitle>
                       <CardDescription className="text-sm">
-                        {agent.description || 'No description'}
+                        {agent.description || "No description"}
                       </CardDescription>
                     </div>
                   </div>

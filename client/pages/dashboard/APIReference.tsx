@@ -611,7 +611,7 @@ export default function APIReference() {
   "https://api.ojastack.tech${selectedEndpoint.path}" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json"${selectedEndpoint.method !== 'GET' ? ` \\
-  -d '${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)}'` : ''}`}</code>
+  -d '${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)}'` : ""}`}</code>
                               </pre>
                               <Button
                                 size="sm"
@@ -633,7 +633,7 @@ export default function APIReference() {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
   }${selectedEndpoint.method !== 'GET' ? `,
-  body: JSON.stringify(${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)})` : ''}
+  body: JSON.stringify(${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)})` : ""}
 });
 
 const data = await response.json();
@@ -688,7 +688,7 @@ const config = {
     'Authorization': 'Bearer YOUR_API_KEY',
     'Content-Type': 'application/json'
   }${selectedEndpoint.method !== 'GET' ? `,
-  data: ${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)}` : ''}
+  data: ${JSON.stringify(selectedEndpoint.example?.request || {}, null, 2)}` : ""}
 };
 
 axios(config)
@@ -731,6 +731,5 @@ axios(config)
           </div>
         </div>
       </div>
-    </div>
   );
 }

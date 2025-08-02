@@ -52,10 +52,10 @@ interface Agent {
 
 export default function TestAgent() {
   const { agentId } = useParams<{ agentId: string }>();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   // Widget configuration
   const [widgetConfig, setWidgetConfig] = useState({
     customerName: 'Test User',
@@ -104,7 +104,7 @@ export default function TestAgent() {
     try {
       const response = await fetch(`/.netlify/functions/agents/${agentId}`, {
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
+          'Authorization': `Bearer ${(session as any)?.access_token}`,
         },
       });
 
@@ -296,7 +296,7 @@ export default function TestAgent() {
                       agentId={agentId!}
                       agentName={agent.name}
                       voiceSettings={{
-                        voice_id: agent.voice_settings?.voice_id || 'rachel',
+                        voice_id: agent.voice_settings?.voice_id || "rachel",
                         stability: agent.voice_settings?.stability || 0.5,
                         similarity_boost: agent.voice_settings?.similarity_boost || 0.5,
                         style: agent.voice_settings?.style || 0.5,

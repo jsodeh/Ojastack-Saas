@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { 
+import {
   Monitor,
   Code,
   Webhook,
@@ -161,7 +161,7 @@ export default function IntegrationConfig() {
 
   const filteredIntegrations = integrations.filter(integration => {
     const matchesSearch = integration.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         integration.description.toLowerCase().includes(searchTerm.toLowerCase());
+      integration.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = selectedCategory === "all" || integration.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -204,213 +204,212 @@ export default function IntegrationConfig() {
 
   return (
     <div className="space-y-8">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
-            <p className="text-muted-foreground">
-              Connect your AI agents with external platforms and services
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline">
-              <Filter className="h-4 w-4 mr-2" />
-              Filters
-            </Button>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Integration
-            </Button>
-          </div>
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
+          <p className="text-muted-foreground">
+            Connect your AI agents with external platforms and services
+          </p>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Integrations</CardTitle>
-              <CheckCircle className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {integrations.filter(i => i.status === 'active').length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+2</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
-              <BarChart3 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {integrations.reduce((sum, i) => sum + (i.usage?.requests || 0), 0).toLocaleString()}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+12%</span> from last month
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">API Usage</CardTitle>
-              <Code className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">87%</div>
-              <p className="text-xs text-muted-foreground">
-                of monthly quota used
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Webhooks</CardTitle>
-              <Webhook className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {integrations.filter(i => i.type === 'webhook').length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                endpoints configured
-              </p>
-            </CardContent>
-          </Card>
+        <div className="flex items-center space-x-3">
+          <Button variant="outline">
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Integration
+          </Button>
         </div>
-
-        {/* Search and Filters */}
-        <div className="flex items-center space-x-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search integrations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(category => (
-                <SelectItem key={category} value={category}>
-                  {category === "all" ? "All Categories" : category}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Integrations Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredIntegrations.map((integration) => (
-            <Card key={integration.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      <integration.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{integration.name}</CardTitle>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="outline" className={getStatusColor(integration.status)}>
-                          {getStatusIcon(integration.status)}
-                          <span className="ml-1">{integration.status}</span>
-                        </Badge>
-                        <Badge className={getTypeColor(integration.type)}>
-                          {integration.type}
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4">
-                  {integration.description}
-                </CardDescription>
-
-                {integration.usage && (
-                  <div className="space-y-2 mb-4">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Usage</span>
-                      <span className="font-medium">{integration.usage.requests.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Period</span>
-                      <span className="font-medium">{integration.usage.period}</span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => {
-                      setSelectedIntegration(integration);
-                      setIsConfigDialogOpen(true);
-                    }}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Configure
-                  </Button>
-                  <div className="flex items-center space-x-1">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                    {integration.status === 'active' ? (
-                      <Button variant="ghost" size="sm">
-                        <Pause className="h-4 w-4" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="sm">
-                        <Play className="h-4 w-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Integration Configuration Dialog */}
-        {selectedIntegration && (
-          <IntegrationConfigDialog
-            integration={selectedIntegration}
-            open={isConfigDialogOpen}
-            onOpenChange={setIsConfigDialogOpen}
-            onCopy={copyToClipboard}
-          />
-        )}
       </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Integrations</CardTitle>
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {integrations.filter(i => i.status === 'active').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+2</span> from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
+            <BarChart3 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {integrations.reduce((sum, i) => sum + (i.usage?.requests || 0), 0).toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+12%</span> from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">API Usage</CardTitle>
+            <Code className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">87%</div>
+            <p className="text-xs text-muted-foreground">
+              of monthly quota used
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Webhooks</CardTitle>
+            <Webhook className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {integrations.filter(i => i.type === 'webhook').length}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              endpoints configured
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex items-center space-x-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search integrations..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="Category" />
+          </SelectTrigger>
+          <SelectContent>
+            {categories.map(category => (
+              <SelectItem key={category} value={category}>
+                {category === "all" ? "All Categories" : category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Integrations Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {filteredIntegrations.map((integration) => (
+          <Card key={integration.id} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-start justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <integration.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{integration.name}</CardTitle>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge variant="outline" className={getStatusColor(integration.status)}>
+                        {getStatusIcon(integration.status)}
+                        <span className="ml-1">{integration.status}</span>
+                      </Badge>
+                      <Badge className={getTypeColor(integration.type)}>
+                        {integration.type}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <CardDescription className="mb-4">
+                {integration.description}
+              </CardDescription>
+
+              {integration.usage && (
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Usage</span>
+                    <span className="font-medium">{integration.usage.requests.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Period</span>
+                    <span className="font-medium">{integration.usage.period}</span>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-4 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedIntegration(integration);
+                    setIsConfigDialogOpen(true);
+                  }}
+                >
+                  <Settings className="h-4 w-4 mr-2" />
+                  Configure
+                </Button>
+                <div className="flex items-center space-x-1">
+                  <Button variant="ghost" size="sm">
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="sm">
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {integration.status === 'active' ? (
+                    <Button variant="ghost" size="sm">
+                      <Pause className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm">
+                      <Play className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Integration Configuration Dialog */}
+      {selectedIntegration && (
+        <IntegrationConfigDialog
+          integration={selectedIntegration}
+          open={isConfigDialogOpen}
+          onOpenChange={setIsConfigDialogOpen}
+          onCopy={copyToClipboard}
+        />
+      )}
     </div>
   );
 }
 
 // Integration Configuration Dialog
-function IntegrationConfigDialog({ 
-  integration, 
-  open, 
+function IntegrationConfigDialog({
+  integration,
+  open,
   onOpenChange,
-  onCopy 
-}: { 
+  onCopy
+}: {
   integration: Integration;
-  open: boolean; 
+  open: boolean;
   onOpenChange: (open: boolean) => void;
   onCopy: (text: string) => void;
 }) {
@@ -532,7 +531,7 @@ console.log(data);`;
                   <div className="space-y-2">
                     <Label>API Key</Label>
                     <div className="flex space-x-2">
-                      <Input 
+                      <Input
                         type={showApiKey ? "text" : "password"}
                         value={integration.config?.apiKey}
                         className="font-mono"
@@ -697,7 +696,7 @@ console.log(data);`;
           <TabsContent value="analytics" className="space-y-6">
             <div className="space-y-4">
               <h3 className="text-lg font-medium">Usage Analytics</h3>
-              
+
               <div className="grid grid-cols-2 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
@@ -731,9 +730,8 @@ console.log(data);`;
                   ].map((activity, idx) => (
                     <div key={idx} className="flex items-center justify-between p-2 border rounded">
                       <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                          activity.status === 'success' ? 'bg-green-500' : 'bg-red-500'
-                        }`} />
+                        <div className={`w-2 h-2 rounded-full ${activity.status === 'success' ? 'bg-green-500' : 'bg-red-500'
+                          }`} />
                         <span className="text-sm">{activity.event}</span>
                       </div>
                       <span className="text-xs text-muted-foreground">{activity.time}</span>

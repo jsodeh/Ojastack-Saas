@@ -380,7 +380,7 @@ export default function Conversations() {
                                                     <div className="flex items-center space-x-4 text-sm text-muted-foreground mt-1">
                                                         <span className="flex items-center">
                                                             <User className="h-3 w-3 mr-1" />
-                                                            {conversation.agent?.name || 'Unknown Agent'}
+                                                            {conversation.agent?.name || "Unknown Agent"}
                                                         </span>
                                                         <span className="flex items-center">
                                                             <MessageSquare className="h-3 w-3 mr-1" />
@@ -456,7 +456,7 @@ export default function Conversations() {
                                         </Badge>
                                     </div>
                                     <CardDescription>
-                                        {conversation.agent?.name || 'Unknown Agent'} • {conversation.channel}
+                                        {conversation.agent?.name || "Unknown Agent"} • {conversation.channel}
                                     </CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-3">

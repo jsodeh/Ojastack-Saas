@@ -878,6 +878,5 @@ export default function InteractiveDemo() {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
   );
 }

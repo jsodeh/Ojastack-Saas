@@ -171,7 +171,7 @@ const WorkflowTest: React.FC = () => {
                                     <span className="text-2xl mr-3">🔗</span>
                                     <div>
                                         <div className="font-semibold">API Endpoint</div>
-                                        <div className="text-sm">{import.meta.env.VITE_N8N_API_URL || 'Not configured'}</div>
+                                        <div className="text-sm">{import.meta.env.VITE_N8N_API_URL || "Not configured"}</div>
                                     </div>
                                 </div>
                             </div>
@@ -343,7 +343,7 @@ const WorkflowTest: React.FC = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+        </div>
     );
 };
 

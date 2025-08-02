@@ -331,7 +331,6 @@ const MultimodalTest: React.FC = () => {
           </div>
         )}
       </div>
-    </div>
   );
 };
 

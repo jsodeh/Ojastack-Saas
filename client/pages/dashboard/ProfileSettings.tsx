@@ -27,10 +27,10 @@ export default function ProfileSettings() {
   const { toast } = useToast();
   const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
-    full_name: profile?.full_name || '',
-    username: profile?.username || '',
-    company: profile?.company || '',
-    avatar_url: profile?.avatar_url || '',
+    full_name: profile?.full_name || "",
+    username: profile?.username || "",
+    company: profile?.company || "",
+    avatar_url: profile?.avatar_url || "",
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -67,10 +67,10 @@ export default function ProfileSettings() {
 
   const isFormChanged = () => {
     return (
-      formData.full_name !== (profile?.full_name || '') ||
-      formData.username !== (profile?.username || '') ||
-      formData.company !== (profile?.company || '') ||
-      formData.avatar_url !== (profile?.avatar_url || '')
+          formData.full_name !== (profile?.full_name || "") ||
+    formData.username !== (profile?.username || "") ||
+    formData.company !== (profile?.company || "") ||
+    formData.avatar_url !== (profile?.avatar_url || "")
     );
   };
 
@@ -100,7 +100,6 @@ export default function ProfileSettings() {
             </div>
           </div>
         </div>
-      </div>
     );
   }
 
@@ -159,7 +158,7 @@ export default function ProfileSettings() {
                   <Label htmlFor="email">Email Address</Label>
                   <Input
                     id="email"
-                    value={user?.email || ''}
+                    value={user?.email || ""}
                     disabled
                     className="bg-muted"
                   />
@@ -205,7 +204,7 @@ export default function ProfileSettings() {
               <CardContent>
                 <div className="flex items-center justify-between p-4 border rounded-lg">
                   <div>
-                    <h4 className="font-medium capitalize">{profile?.plan || 'Starter'} Plan</h4>
+                    <h4 className="font-medium capitalize">{profile?.plan || "Starter"} Plan</h4>
                     <p className="text-sm text-muted-foreground">
                       {profile?.current_usage || 0} / {profile?.usage_limit || 1000} conversations used
                     </p>
@@ -232,7 +231,7 @@ export default function ProfileSettings() {
                   <Avatar className="w-24 h-24">
                     <AvatarImage src={formData.avatar_url} />
                     <AvatarFallback className="text-lg">
-                      {formData.full_name?.charAt(0) || user?.email?.charAt(0) || 'U'}
+                      {formData.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
                     </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" size="sm">
@@ -271,6 +270,5 @@ export default function ProfileSettings() {
           </div>
         </div>
       </div>
-    </div>
   );
 }

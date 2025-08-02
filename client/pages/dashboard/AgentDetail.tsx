@@ -10,12 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import { 
-  ArrowLeft, 
-  Bot, 
-  MessageSquare, 
-  Settings, 
-  BarChart3, 
+import {
+  ArrowLeft,
+  Bot,
+  MessageSquare,
+  Settings,
+  BarChart3,
   Database,
   Zap,
   Save,
@@ -61,12 +61,11 @@ interface Agent {
 
 export default function AgentDetail() {
   const { agentId } = useParams<{ agentId: string }>();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const [agent, setAgent] = useState<Agent | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [recentConversations, setRecentConversations] = useState([]);
-  const [analytics, setAnalytics] = useState([]);
 
   useEffect(() => {
     if (agentId) {
@@ -78,7 +77,7 @@ export default function AgentDetail() {
     try {
       const response = await fetch(`/.netlify/functions/agents/${agentId}`, {
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
+          'Authorization': `Bearer ${(session as any)?.access_token}`,
         },
       });
 
@@ -86,7 +85,6 @@ export default function AgentDetail() {
         const data = await response.json();
         setAgent(data.agent);
         setRecentConversations(data.recentConversations || []);
-        setAnalytics(data.analytics || []);
       }
     } catch (error) {
       console.error('Error fetching agent:', error);
@@ -97,13 +95,13 @@ export default function AgentDetail() {
 
   const saveAgent = async () => {
     if (!agent) return;
-    
+
     setSaving(true);
     try {
       const response = await fetch(`/.netlify/functions/agents/${agentId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
+          'Authorization': `Bearer ${(session as any)?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -134,14 +132,14 @@ export default function AgentDetail() {
 
   const toggleStatus = async () => {
     if (!agent) return;
-    
+
     const newStatus = agent.status === 'active' ? 'inactive' : 'active';
-    
+
     try {
       const response = await fetch(`/.netlify/functions/agents/${agentId}`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${user?.access_token}`,
+          'Authorization': `Bearer ${(session as any)?.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ status: newStatus }),
@@ -221,7 +219,7 @@ export default function AgentDetail() {
           </Button>
           <div>
             <h1 className="text-3xl font-bold">{agent.name}</h1>
-            <p className="text-muted-foreground">{agent.description || 'No description'}</p>
+            <p className="text-muted-foreground">{agent.description || "No description"}</p>
           </div>
         </div>
         <div className="flex items-center space-x-2">
@@ -368,7 +366,6 @@ export default function AgentDetail() {
                       value={[agent.settings.temperature]}
                       onValueChange={([value]) => updateSettings('temperature', value)}
                       max={1}
-                      min={0}
                       step={0.1}
                     />
                   </div>
@@ -399,7 +396,7 @@ export default function AgentDetail() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     <div className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <div className="font-medium">Web Widget</div>
@@ -415,7 +412,7 @@ export default function AgentDetail() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    
+
                     <div className="flex items-center justify-between p-3 border rounded">
                       <div>
                         <div className="font-medium">Slack Integration</div>
@@ -446,7 +443,7 @@ export default function AgentDetail() {
                     <div className="text-2xl font-bold">{agent.conversation_count}</div>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Status</CardTitle>
@@ -457,14 +454,14 @@ export default function AgentDetail() {
                     </Badge>
                   </CardContent>
                 </Card>
-                
+
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-medium">Last Active</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="text-sm">
-                      {agent.last_active 
+                      {agent.last_active
                         ? new Date(agent.last_active).toLocaleDateString()
                         : 'Never'
                       }
@@ -517,7 +514,7 @@ export default function AgentDetail() {
                 />
               </div>
               <div className="text-sm text-muted-foreground">
-                {agent.status === 'active' 
+                {agent.status === 'active'
                   ? 'Your agent is live and responding to messages'
                   : 'Your agent is paused and not responding'
                 }

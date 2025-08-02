@@ -440,7 +440,6 @@ export default function KnowledgeBasePage() {
           onOpenChange={setIsUploadDialogOpen}
         />
       </div>
-    </div>
   );
 }
 
