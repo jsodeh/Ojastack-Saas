@@ -476,9 +476,8 @@ export default function Index() {
               <CardHeader className="text-center pb-8">
                 <CardTitle className="text-2xl">Basic</CardTitle>
                 <div className="space-y-2">
-                  <div className="text-lg text-muted-foreground line-through">$75</div>
-                  <div className="text-4xl font-bold text-green-600">$53</div>
-                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                  <div className="text-4xl font-bold">$75</div>
+                  <div className="text-lg text-muted-foreground">/month</div>
                 </div>
                 <CardDescription>Perfect for small businesses</CardDescription>
               </CardHeader>
@@ -519,9 +518,8 @@ export default function Index() {
                 <Badge className="mb-2">Most Popular</Badge>
                 <CardTitle className="text-2xl">Pro</CardTitle>
                 <div className="space-y-2">
-                  <div className="text-lg text-muted-foreground line-through">$250</div>
-                  <div className="text-4xl font-bold text-green-600">$175</div>
-                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                  <div className="text-4xl font-bold">$250</div>
+                  <div className="text-lg text-muted-foreground">/month</div>
                 </div>
                 <CardDescription>For growing businesses</CardDescription>
               </CardHeader>
@@ -561,9 +559,8 @@ export default function Index() {
               <CardHeader className="text-center pb-8">
                 <CardTitle className="text-2xl">Startup</CardTitle>
                 <div className="space-y-2">
-                  <div className="text-lg text-muted-foreground line-through">$1,250</div>
-                  <div className="text-4xl font-bold text-green-600">$875</div>
-                  <Badge variant="secondary" className="text-xs">30% OFF</Badge>
+                  <div className="text-4xl font-bold">$1,250</div>
+                  <div className="text-lg text-muted-foreground">/month</div>
                 </div>
                 <CardDescription>For scaling startups</CardDescription>
               </CardHeader>

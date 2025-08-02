@@ -24,8 +24,8 @@ export default function Pricing() {
     {
       name: "Basic",
       description: "Perfect for small businesses",
-      monthlyPrice: 53,
-      yearlyPrice: 42, // 20% discount for yearly
+      monthlyPrice: 75,
+      yearlyPrice: 60, // 20% discount for yearly
       popular: false,
       features: [
         { name: "2 AI Agents", included: true },
@@ -46,8 +46,8 @@ export default function Pricing() {
     {
       name: "Pro",
       description: "For growing businesses",
-      monthlyPrice: 175,
-      yearlyPrice: 140, // 20% discount for yearly
+      monthlyPrice: 250,
+      yearlyPrice: 200, // 20% discount for yearly
       popular: true,
       features: [
         { name: "10 AI Agents", included: true },
@@ -68,8 +68,8 @@ export default function Pricing() {
     {
       name: "Startup",
       description: "For scaling startups",
-      monthlyPrice: 875,
-      yearlyPrice: 700, // 20% discount for yearly
+      monthlyPrice: 1250,
+      yearlyPrice: 1000, // 20% discount for yearly
       popular: false,
       features: [
         { name: "100 AI Agents", included: true },
