@@ -22,12 +22,15 @@ import {
   ChevronDown,
   FileText,
   Terminal,
-  Sparkles
+  Sparkles,
+  User
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Docs() {
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSections, setExpandedSections] = useState<string[]>(["getting-started"]);
   const { toast } = useToast();
@@ -225,12 +228,28 @@ print(f"Agent created: {agent.id}")`
               </div>
             </div>
             <div className="flex items-center space-x-4">
-              <Link to="/login">
-                <Button variant="ghost">Log in</Button>
-              </Link>
-              <Link to="/signup">
-                <Button>Get Started</Button>
-              </Link>
+              {user ? (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link to="/dashboard">Dashboard</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/dashboard/settings/profile">
+                      <User className="h-4 w-4 mr-2" />
+                      My Account
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button variant="ghost" asChild>
+                    <Link to="/login">Sign In</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link to="/signup">Get Started</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </div>

@@ -12,12 +12,15 @@ import {
   Phone,
   Eye,
   BarChart3,
-  HelpCircle
+  HelpCircle,
+  User
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { useAuth } from "@/lib/auth-context";
 
 export default function Pricing() {
+  const { user } = useAuth();
   const [isYearly, setIsYearly] = useState(false);
 
   const plans = [
@@ -162,12 +165,28 @@ export default function Pricing() {
                 </div>
               </div>
               <div className="flex items-center space-x-4">
-                <Link to="/login">
-                  <Button variant="ghost">Log in</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button>Get Started</Button>
-                </Link>
+                {user ? (
+                  <>
+                    <Button variant="ghost" asChild>
+                      <Link to="/dashboard">Dashboard</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link to="/dashboard/settings/profile">
+                        <User className="h-4 w-4 mr-2" />
+                        My Account
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="ghost" asChild>
+                      <Link to="/login">Sign In</Link>
+                    </Button>
+                    <Button asChild>
+                      <Link to="/signup">Get Started</Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
