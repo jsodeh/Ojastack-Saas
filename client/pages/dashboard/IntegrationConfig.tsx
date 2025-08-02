@@ -422,10 +422,10 @@ function IntegrationConfigDialog({
   (function() {
     var script = document.createElement('script');
     script.src = 'https://widget.ojastack.tech/widget.js';
-    script.setAttribute('data-agent-id', '${integration.config?.agentId || 'your-agent-id'}');
-    script.setAttribute('data-theme', '${integration.config?.theme || 'light'}');
-    script.setAttribute('data-position', '${integration.config?.position || 'bottom-right'}');
-    script.setAttribute('data-color', '${integration.config?.color || '#007bff'}');
+    script.setAttribute('data-agent-id', '${integration.config?.agentId || "your-agent-id"}');
+    script.setAttribute('data-theme', '${integration.config?.theme || "light"}');
+    script.setAttribute('data-position', '${integration.config?.position || "bottom-right"}');
+    script.setAttribute('data-color', '${integration.config?.color || "#007bff"}');
     document.head.appendChild(script);
   })();
 </script>`;
@@ -436,11 +436,11 @@ function IntegrationConfigDialog({
 const response = await fetch('https://api.ojastack.tech/v1/conversations', {
   method: 'POST',
   headers: {
-    'Authorization': 'Bearer ${integration.config?.apiKey || 'your-api-key'}',
+    'Authorization': 'Bearer ${integration.config?.apiKey || "your-api-key"}',
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    agent_id: '${integration.config?.agentId || 'your-agent-id'}',
+    agent_id: '${integration.config?.agentId || "your-agent-id"}',
     message: 'Hello, I need help'
   })
 });
