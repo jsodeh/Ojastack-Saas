@@ -37,6 +37,28 @@ import {
 import { useDropzone } from "react-dropzone";
 
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/lib/auth-context";
+import { 
+  fetchKnowledgeBaseData, 
+  formatFileSize, 
+  formatTimeAgo,
+  getStatusColor as getKBStatusColor,
+  getStatusIcon as getKBStatusIcon,
+  retryWithBackoff,
+  KnowledgeBaseServiceError,
+  createRealTimeUpdater,
+  hasProcessingDocuments,
+  getProcessingProgress,
+  type KnowledgeBase as KBType,
+  type Document as DocType,
+  type KnowledgeBaseStats,
+  type KnowledgeBaseData,
+  type KnowledgeBaseRealTimeUpdater,
+  type RealTimeUpdateConfig
+} from "@/lib/knowledge-base-service";
+import { EmptyState, LoadingState } from "@/components/ui/empty-state";
+import { KnowledgeBaseErrorBoundary, useKnowledgeBaseErrorBoundary } from "@/components/ui/knowledge-base-error-boundary";
+import { ErrorState, StatsErrorState, KnowledgeBasesErrorState, DocumentsErrorState } from "@/components/ui/error-state";
 
 interface KnowledgeBase {
   id: string;
@@ -64,99 +86,223 @@ interface Document {
 
 export default function KnowledgeBasePage() {
   const { toast } = useToast();
-  const [knowledgeBases, setKnowledgeBases] = useState<KnowledgeBase[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
+  const { user } = useAuth();
+  
+  // Real data state
+  const [knowledgeBaseData, setKnowledgeBaseData] = useState<KnowledgeBaseData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  
+  // Real-time updates state
+  const [realTimeUpdater, setRealTimeUpdater] = useState<KnowledgeBaseRealTimeUpdater | null>(null);
+  const [isRealTimeEnabled, setIsRealTimeEnabled] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
+  const [updateStatus, setUpdateStatus] = useState<'idle' | 'updating' | 'error'>('idle');
+  
+  // Error boundary hook
+  const { captureError } = useKnowledgeBaseErrorBoundary();
+  
+  // UI state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
-  const [selectedKB, setSelectedKB] = useState<KnowledgeBase | null>(null);
+  const [selectedKB, setSelectedKB] = useState<KBType | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
-  // Mock data
-  const mockKnowledgeBases: KnowledgeBase[] = [
-    {
-      id: "kb_1",
-      name: "Customer Support Knowledge",
-      description: "Comprehensive support documentation and FAQs for customer service agents",
-      documents: 245,
-      size: "12.3 MB",
-      lastUpdated: "2 hours ago",
-      status: "active",
-      type: "documents",
-      agents: ["agent_1", "agent_2"],
-      createdAt: "2024-01-15"
-    },
-    {
-      id: "kb_2",
-      name: "Product Catalog",
-      description: "Complete product information, specifications, and pricing",
-      documents: 89,
-      size: "8.7 MB", 
-      lastUpdated: "1 day ago",
-      status: "active",
-      type: "documents",
-      agents: ["agent_1"],
-      createdAt: "2024-01-10"
-    },
-    {
-      id: "kb_3",
-      name: "Website Content",
-      description: "Scraped content from company website and blog",
-      documents: 156,
-      size: "15.2 MB",
-      lastUpdated: "6 hours ago",
-      status: "processing",
-      type: "website",
-      agents: ["agent_2", "agent_3"],
-      createdAt: "2024-01-20"
+  // Fetch real data with retry logic
+  const loadKnowledgeBaseData = async (withRetry: boolean = false) => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (withRetry) {
+        setRetrying(true);
+        setRetryCount(prev => prev + 1);
+      }
+      
+      const data = await (withRetry 
+        ? retryWithBackoff(() => fetchKnowledgeBaseData(user.id), 3, 1000)
+        : fetchKnowledgeBaseData(user.id)
+      );
+      
+      setKnowledgeBaseData(data);
+      setRetryCount(0); // Reset retry count on success
+    } catch (err) {
+      console.error('Error loading knowledge base data:', err);
+      const error = err instanceof Error ? err : new Error('Failed to load knowledge base data');
+      setError(error);
+      captureError(error);
+      
+      // Show toast for user feedback
+      toast({
+        title: "Error Loading Data",
+        description: error instanceof KnowledgeBaseServiceError 
+          ? error.message 
+          : "Failed to load knowledge base data. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+      setRetrying(false);
     }
-  ];
+  };
 
-  const mockDocuments: Document[] = [
-    {
-      id: "doc_1",
-      name: "Customer Service Manual.pdf",
-      type: "pdf",
-      size: "2.4 MB",
-      uploadedAt: "2024-01-15",
-      status: "processed",
-      chunks: 45,
-      knowledgeBaseId: "kb_1"
-    },
-    {
-      id: "doc_2", 
-      name: "FAQ Database.docx",
-      type: "docx",
-      size: "1.8 MB",
-      uploadedAt: "2024-01-14",
-      status: "processed",
-      chunks: 32,
-      knowledgeBaseId: "kb_1"
-    },
-    {
-      id: "doc_3",
-      name: "Product Specifications.txt",
-      type: "txt",
-      size: "0.9 MB",
-      uploadedAt: "2024-01-13",
-      status: "processing",
-      chunks: 0,
-      knowledgeBaseId: "kb_2"
+  // Retry function for user-initiated retries
+  const handleRetry = () => {
+    loadKnowledgeBaseData(true);
+  };
+
+  // Reset error state
+  const handleResetError = () => {
+    setError(null);
+    setRetryCount(0);
+    loadKnowledgeBaseData();
+  };
+
+  // Force refresh function
+  const handleForceRefresh = async () => {
+    setUpdateStatus('updating');
+    
+    if (realTimeUpdater) {
+      await realTimeUpdater.forceUpdate();
+    } else {
+      await loadKnowledgeBaseData(true);
     }
-  ];
+  };
+
+  // Toggle real-time updates
+  const toggleRealTimeUpdates = () => {
+    if (!realTimeUpdater) return;
+
+    if (isRealTimeEnabled) {
+      realTimeUpdater.stop();
+      setIsRealTimeEnabled(false);
+      toast({
+        title: "Real-time Updates Disabled",
+        description: "You can still refresh manually.",
+      });
+    } else {
+      realTimeUpdater.start();
+      setIsRealTimeEnabled(true);
+      toast({
+        title: "Real-time Updates Enabled",
+        description: "Data will refresh automatically every 10 seconds.",
+      });
+    }
+  };
+
+  // Initialize real-time updater
+  React.useEffect(() => {
+    if (!user?.id) return;
+
+    const config: RealTimeUpdateConfig = {
+      enabled: true,
+      interval: 10000, // 10 seconds
+      maxRetries: 3,
+      onUpdate: (data) => {
+        setKnowledgeBaseData(data);
+        setLastUpdateTime(new Date());
+        setUpdateStatus('idle');
+        
+        // Show toast for significant changes
+        if (knowledgeBaseData) {
+          const oldProcessing = knowledgeBaseData.stats.processingQueue;
+          const newProcessing = data.stats.processingQueue;
+          const oldProgress = getProcessingProgress(knowledgeBaseData);
+          const newProgress = getProcessingProgress(data);
+          
+          // Notify when all processing is complete
+          if (oldProcessing > newProcessing && newProcessing === 0) {
+            toast({
+              title: "Processing Complete",
+              description: "All documents have finished processing.",
+              variant: "default",
+            });
+          }
+          
+          // Notify when new documents complete processing
+          if (newProgress.completed > oldProgress.completed) {
+            const newlyCompleted = newProgress.completed - oldProgress.completed;
+            toast({
+              title: `${newlyCompleted} Document${newlyCompleted > 1 ? 's' : ''} Processed`,
+              description: `${newProgress.completed} of ${newProgress.total} documents completed.`,
+              variant: "default",
+            });
+          }
+          
+          // Notify when documents fail processing
+          if (newProgress.failed > oldProgress.failed) {
+            const newlyFailed = newProgress.failed - oldProgress.failed;
+            toast({
+              title: `Processing Failed`,
+              description: `${newlyFailed} document${newlyFailed > 1 ? 's' : ''} failed to process.`,
+              variant: "destructive",
+            });
+          }
+        }
+      },
+      onError: (error) => {
+        setUpdateStatus('error');
+        console.warn('Real-time update error:', error);
+      },
+    };
+
+    const updater = createRealTimeUpdater(user.id, config);
+    setRealTimeUpdater(updater);
+
+    return () => {
+      updater.stop();
+    };
+  }, [user?.id]);
+
+  // Start/stop real-time updates based on processing status
+  React.useEffect(() => {
+    if (!realTimeUpdater || !knowledgeBaseData) return;
+
+    const shouldEnableRealTime = hasProcessingDocuments(knowledgeBaseData);
+    
+    if (shouldEnableRealTime && !isRealTimeEnabled) {
+      realTimeUpdater.start();
+      setIsRealTimeEnabled(true);
+    } else if (!shouldEnableRealTime && isRealTimeEnabled) {
+      realTimeUpdater.stop();
+      setIsRealTimeEnabled(false);
+    }
+  }, [realTimeUpdater, knowledgeBaseData, isRealTimeEnabled]);
 
   React.useEffect(() => {
-    setKnowledgeBases(mockKnowledgeBases);
-    setDocuments(mockDocuments);
-  }, []);
+    loadKnowledgeBaseData();
+  }, [user?.id]);
+
+  // Get real data with fallbacks
+  const knowledgeBases = knowledgeBaseData?.knowledgeBases || [];
+  const documents = knowledgeBaseData?.recentDocuments || [];
+  const stats = knowledgeBaseData?.stats || {
+    totalBases: 0,
+    totalDocuments: 0,
+    storageUsed: 0,
+    processingQueue: 0,
+  };
+
+  // Data state indicators
+  const hasData = knowledgeBases.length > 0 || documents.length > 0;
+  const isProcessing = hasProcessingDocuments(knowledgeBaseData || {
+    stats: { totalBases: 0, totalDocuments: 0, storageUsed: 0, processingQueue: 0 },
+    knowledgeBases: [],
+    recentDocuments: [],
+  });
 
   const filteredKnowledgeBases = knowledgeBases.filter(kb => {
     const matchesSearch = kb.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          kb.description.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === "all" || kb.status === filterStatus;
-    const matchesType = filterType === "all" || kb.type === filterType;
-    return matchesSearch && matchesStatus && matchesType;
+    // Note: type filtering removed since our data model doesn't include type field
+    return matchesSearch && matchesStatus;
   });
 
   const getStatusColor = (status: string) => {
@@ -185,11 +331,18 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  const getFileTypeFromFilename = (filename: string): string => {
+    const extension = filename.split('.').pop()?.toLowerCase();
+    return extension || 'file';
+  };
+
   const getFileIcon = (type: string) => {
     switch (type) {
       case "pdf": return <File className="h-4 w-4 text-red-500" />;
-      case "docx": return <FileText className="h-4 w-4 text-blue-500" />;
-      case "txt": return <FileText className="h-4 w-4 text-gray-500" />;
+      case "docx": 
+      case "doc": return <FileText className="h-4 w-4 text-blue-500" />;
+      case "txt": 
+      case "md": return <FileText className="h-4 w-4 text-gray-500" />;
       case "url": return <ExternalLink className="h-4 w-4 text-green-500" />;
       case "api": return <Link className="h-4 w-4 text-purple-500" />;
       default: return <File className="h-4 w-4" />;
@@ -197,16 +350,58 @@ export default function KnowledgeBasePage() {
   };
 
   return (
-    <div className="space-y-8">
+    <KnowledgeBaseErrorBoundary onRetry={handleRetry} onReset={handleResetError}>
+      <div className="space-y-8">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Knowledge Base</h1>
-            <p className="text-muted-foreground">
-              Manage your AI agents' knowledge sources and documentation
-            </p>
+            <div className="flex items-center space-x-4 mt-1">
+              <p className="text-muted-foreground">
+                Manage your AI agents' knowledge sources and documentation
+              </p>
+              {lastUpdateTime && (
+                <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                  <div className={`w-2 h-2 rounded-full ${
+                    updateStatus === 'updating' ? 'bg-yellow-500 animate-pulse' :
+                    updateStatus === 'error' ? 'bg-red-500' :
+                    isRealTimeEnabled ? 'bg-green-500' : 'bg-gray-400'
+                  }`}></div>
+                  <span>
+                    {updateStatus === 'updating' ? 'Updating...' :
+                     updateStatus === 'error' ? 'Update failed' :
+                     `Updated ${formatTimeAgo(lastUpdateTime.toISOString())}`}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex items-center space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={handleForceRefresh}
+              disabled={loading || retrying || updateStatus === 'updating'}
+            >
+              {loading || retrying || updateStatus === 'updating' ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              {updateStatus === 'updating' ? 'Updating...' : 
+               retrying ? 'Retrying...' : 'Refresh'}
+            </Button>
+            {knowledgeBaseData && hasProcessingDocuments(knowledgeBaseData) && (
+              <Button 
+                variant="outline" 
+                onClick={toggleRealTimeUpdates}
+                className={isRealTimeEnabled ? 'bg-green-50 border-green-200' : ''}
+              >
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  isRealTimeEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
+                }`}></div>
+                {isRealTimeEnabled ? 'Auto-refresh On' : 'Auto-refresh Off'}
+              </Button>
+            )}
             <Button variant="outline">
               <Filter className="h-4 w-4 mr-2" />
               Filters
@@ -218,17 +413,66 @@ export default function KnowledgeBasePage() {
           </div>
         </div>
 
+        {/* Global Error State */}
+        {error && !loading && (
+          <ErrorState 
+            error={error} 
+            onRetry={handleRetry} 
+            onReset={handleResetError}
+          />
+        )}
+
+        {/* Processing Progress Banner */}
+        {knowledgeBaseData && hasProcessingDocuments(knowledgeBaseData) && (
+          <Card className="border-yellow-200 bg-yellow-50">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600"></div>
+                  <div>
+                    <p className="font-medium text-yellow-800">Processing Documents</p>
+                    <p className="text-sm text-yellow-600">
+                      {(() => {
+                        const progress = getProcessingProgress(knowledgeBaseData);
+                        return `${progress.processing} documents processing, ${progress.completed} completed`;
+                      })()}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-yellow-800">
+                    {(() => {
+                      const progress = getProcessingProgress(knowledgeBaseData);
+                      return `${progress.percentage}%`;
+                    })()}
+                  </div>
+                  <p className="text-xs text-yellow-600">Complete</p>
+                </div>
+              </div>
+              <Progress 
+                value={getProcessingProgress(knowledgeBaseData).percentage} 
+                className="mt-3 h-2"
+              />
+            </CardContent>
+          </Card>
+        )}
+
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <KnowledgeBaseErrorBoundary onRetry={handleRetry} onReset={handleResetError}>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Knowledge Bases</CardTitle>
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{knowledgeBases.length}</div>
+              {loading ? (
+                <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+              ) : (
+                <div className="text-2xl font-bold">{stats.totalBases}</div>
+              )}
               <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+1</span> from last month
+                Knowledge bases in your account
               </p>
             </CardContent>
           </Card>
@@ -239,11 +483,13 @@ export default function KnowledgeBasePage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {knowledgeBases.reduce((sum, kb) => sum + kb.documents, 0)}
-              </div>
+              {loading ? (
+                <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+              ) : (
+                <div className="text-2xl font-bold">{stats.totalDocuments}</div>
+              )}
               <p className="text-xs text-muted-foreground">
-                <span className="text-green-600">+32</span> from last week
+                Documents across all knowledge bases
               </p>
             </CardContent>
           </Card>
@@ -254,28 +500,42 @@ export default function KnowledgeBasePage() {
               <Archive className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">36.2 MB</div>
+              {loading ? (
+                <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+              ) : (
+                <div className="text-2xl font-bold">{formatFileSize(stats.storageUsed)}</div>
+              )}
               <p className="text-xs text-muted-foreground">
-                <span className="text-muted-foreground">of 1 GB used</span>
+                Total storage consumed
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={stats.processingQueue > 0 ? 'border-yellow-200 bg-yellow-50/30' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Processing Queue</CardTitle>
-              <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center space-x-1">
+                {stats.processingQueue > 0 && (
+                  <div className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full"></div>
+                )}
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {documents.filter(d => d.status === 'processing').length}
-              </div>
+              {loading ? (
+                <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+              ) : (
+                <div className={`text-2xl font-bold ${stats.processingQueue > 0 ? 'text-yellow-700' : ''}`}>
+                  {stats.processingQueue}
+                </div>
+              )}
               <p className="text-xs text-muted-foreground">
                 documents processing
               </p>
             </CardContent>
           </Card>
         </div>
+        </KnowledgeBaseErrorBoundary>
 
         {/* Search and Filters */}
         <div className="flex items-center space-x-4">
@@ -313,118 +573,213 @@ export default function KnowledgeBasePage() {
         </div>
 
         {/* Knowledge Bases Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredKnowledgeBases.map((kb) => (
-            <Card key={kb.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      {getTypeIcon(kb.type)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{kb.name}</CardTitle>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <Badge variant="outline" className={getStatusColor(kb.status)}>
-                          {getStatusIcon(kb.status)}
-                          <span className="ml-1">{kb.status}</span>
-                        </Badge>
-                        <Badge variant="secondary">
-                          {kb.type}
-                        </Badge>
+        <KnowledgeBaseErrorBoundary onRetry={handleRetry} onReset={handleResetError}>
+          {loading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse">
+                  <CardHeader>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-muted rounded-lg"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-muted rounded w-32"></div>
+                        <div className="h-3 bg-muted rounded w-20"></div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <CardDescription className="mb-4 line-clamp-2">
-                  {kb.description}
-                </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="h-3 bg-muted rounded w-full"></div>
+                      <div className="h-3 bg-muted rounded w-3/4"></div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : filteredKnowledgeBases.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-[400px] text-center">
+              <Database className="h-12 w-12 text-muted-foreground mb-4" />
+              <h3 className="font-medium text-lg mb-2">No knowledge bases yet</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm">
+                Create your first knowledge base to start organizing your AI agent's knowledge and documentation
+              </p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Knowledge Base
+              </Button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredKnowledgeBases.map((kb, index) => (
+                <Card 
+                  key={kb.id} 
+                  className="hover:shadow-md transition-all duration-300 hover:scale-[1.02] animate-in fade-in slide-in-from-bottom-4"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                          <Database className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{kb.name}</CardTitle>
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className={getKBStatusColor(kb.status)}>
+                              <span className="mr-1">{getKBStatusIcon(kb.status)}</span>
+                              <span>{kb.status}</span>
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <CardDescription className="mb-4 line-clamp-2">
+                      {kb.description || 'No description provided'}
+                    </CardDescription>
 
-                <div className="space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Documents</span>
-                    <span className="font-medium">{kb.documents}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Size</span>
-                    <span className="font-medium">{kb.size}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Last Updated</span>
-                    <span className="font-medium">{kb.lastUpdated}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Used by Agents</span>
-                    <span className="font-medium">{kb.agents.length}</span>
-                  </div>
-                </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Documents</span>
+                        <span className="font-medium">{kb.documentCount}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Size</span>
+                        <span className="font-medium">{formatFileSize(kb.totalSize)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Last Updated</span>
+                        <span className="font-medium">{formatTimeAgo(kb.lastUpdated)}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Created</span>
+                        <span className="font-medium">{formatTimeAgo(kb.createdAt)}</span>
+                      </div>
+                    </div>
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Add Docs
-                  </Button>
-                  <div className="flex items-center space-x-1">
-                    <Button variant="ghost" size="sm">
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Settings className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                    <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                      <Button variant="outline" size="sm" onClick={() => setIsUploadDialogOpen(true)}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Add Docs
+                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <Button variant="ghost" size="sm">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </KnowledgeBaseErrorBoundary>
 
         {/* Recent Documents */}
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Recent Documents</CardTitle>
+                <CardTitle className="flex items-center space-x-2">
+                  <span>Recent Documents</span>
+                  {knowledgeBaseData && hasProcessingDocuments(knowledgeBaseData) && (
+                    <div className="flex items-center space-x-1 text-sm text-yellow-600">
+                      <div className="animate-pulse w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span className="text-xs">Live updates</span>
+                    </div>
+                  )}
+                </CardTitle>
                 <CardDescription>Recently uploaded and processed documents</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
-                View All
-              </Button>
+              <div className="flex items-center space-x-2">
+                {lastUpdateTime && (
+                  <span className="text-xs text-muted-foreground">
+                    Updated {formatTimeAgo(lastUpdateTime.toISOString())}
+                  </span>
+                )}
+                <Button variant="outline" size="sm">
+                  View All
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {documents.slice(0, 5).map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    {getFileIcon(doc.type)}
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
-                      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
-                        <span>{doc.size}</span>
-                        <span>•</span>
-                        <span>{doc.uploadedAt}</span>
-                        <span>•</span>
-                        <span>{doc.chunks} chunks</span>
+            <KnowledgeBaseErrorBoundary onRetry={handleRetry} onReset={handleResetError}>
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center justify-between p-4 border rounded-lg animate-pulse">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-4 h-4 bg-muted rounded"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 bg-muted rounded w-48"></div>
+                          <div className="h-3 bg-muted rounded w-32"></div>
+                        </div>
+                      </div>
+                      <div className="w-16 h-6 bg-muted rounded"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : documents.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-[200px] text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="font-medium text-lg mb-2">No documents uploaded</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Upload documents to your knowledge bases to provide context for your AI agents
+                  </p>
+                  <Button variant="outline" onClick={() => setIsUploadDialogOpen(true)}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Upload Documents
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {documents.slice(0, 5).map((doc, index) => (
+                    <div 
+                      key={doc.id} 
+                      className="flex items-center justify-between p-4 border rounded-lg transition-all duration-300 hover:shadow-sm hover:border-primary/20 animate-in fade-in slide-in-from-left-4"
+                      style={{ animationDelay: `${index * 50}ms` }}
+                    >
+                      <div className="flex items-center space-x-3">
+                        {getFileIcon(getFileTypeFromFilename(doc.filename))}
+                        <div>
+                          <p className="font-medium">{doc.filename}</p>
+                          <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+                            <span>{formatFileSize(doc.fileSize)}</span>
+                            <span>•</span>
+                            <span>{formatTimeAgo(doc.createdAt)}</span>
+                            <span>•</span>
+                            <span>{doc.chunkCount} chunks</span>
+                            {doc.knowledgeBaseName && (
+                              <>
+                                <span>•</span>
+                                <span>{doc.knowledgeBaseName}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <Badge variant="outline" className={getKBStatusColor(doc.status)}>
+                          <span className="mr-1">{getKBStatusIcon(doc.status)}</span>
+                          <span>{doc.status}</span>
+                        </Badge>
+                        {doc.status === 'processing' && (
+                          <Progress value={65} className="w-20" />
+                        )}
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center space-x-3">
-                    <Badge variant="outline" className={getStatusColor(doc.status)}>
-                      {getStatusIcon(doc.status)}
-                      <span className="ml-1">{doc.status}</span>
-                    </Badge>
-                    {doc.status === 'processing' && (
-                      <Progress value={65} className="w-20" />
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              )}
+            </KnowledgeBaseErrorBoundary>
           </CardContent>
         </Card>
 
@@ -440,6 +795,7 @@ export default function KnowledgeBasePage() {
           onOpenChange={setIsUploadDialogOpen}
         />
       </div>
+    </KnowledgeBaseErrorBoundary>
   );
 }
 

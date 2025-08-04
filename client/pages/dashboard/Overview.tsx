@@ -44,74 +44,63 @@ import { Link } from "react-router-dom";
 
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/lib/auth-context";
+import { 
+  fetchDashboardData, 
+  type DashboardData,
+  type ConversationVolumeData,
+  type AgentTypeData,
+  type ResponseTimeData,
+  type RecentAgent 
+} from "@/lib/dashboard-service";
+import { EmptyState, LoadingState } from "@/components/ui/empty-state";
+import { ChartErrorBoundary } from "@/components/ui/chart-error-boundary";
 
 export default function DashboardOverview() {
   const [timeRange, setTimeRange] = useState("7d");
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  
+  // Dashboard data state
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Use real profile data with fallbacks
-  const stats = {
-    totalAgents: 0, // TODO: Fetch from agents table
-    activeConversations: 0, // TODO: Fetch from conversations table
-    totalConversations: 0, // TODO: Fetch from conversations table
+  // Fetch dashboard data
+  const loadDashboardData = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setLoading(true);
+      setError(null);
+      const data = await fetchDashboardData(user.id);
+      setDashboardData(data);
+    } catch (err) {
+      console.error('Error loading dashboard data:', err);
+      setError('Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [user?.id]);
+
+  // Use real data with fallbacks
+  const stats = dashboardData?.stats || {
+    totalAgents: 0,
+    activeConversations: 0,
+    totalConversations: 0,
     avgResponseTime: "0s",
     satisfactionScore: 0,
     usageThisMonth: profile?.current_usage || 0,
     usageLimit: profile?.usage_limit || 1000,
   };
 
-  const conversationData = [
-    { date: "Jan 1", conversations: 120, resolved: 115 },
-    { date: "Jan 2", conversations: 145, resolved: 140 },
-    { date: "Jan 3", conversations: 165, resolved: 158 },
-    { date: "Jan 4", conversations: 189, resolved: 182 },
-    { date: "Jan 5", conversations: 203, resolved: 195 },
-    { date: "Jan 6", conversations: 218, resolved: 210 },
-    { date: "Jan 7", conversations: 247, resolved: 235 },
-  ];
-
-  const agentTypeData = [
-    { name: "Chat", value: 65, color: "#8884d8" },
-    { name: "Voice", value: 25, color: "#82ca9d" },
-    { name: "Vision", value: 10, color: "#ffc658" },
-  ];
-
-  const responseTimeData = [
-    { hour: "00:00", time: 1.1 },
-    { hour: "04:00", time: 0.9 },
-    { hour: "08:00", time: 1.8 },
-    { hour: "12:00", time: 2.1 },
-    { hour: "16:00", time: 1.9 },
-    { hour: "20:00", time: 1.3 },
-  ];
-
-  const recentAgents = [
-    {
-      id: "agent_1",
-      name: "Customer Support Bot",
-      type: "chat",
-      status: "active",
-      conversations: 1247,
-      lastActive: "2 min ago",
-    },
-    {
-      id: "agent_2",
-      name: "Sales Assistant",
-      type: "voice",
-      status: "active",
-      conversations: 832,
-      lastActive: "5 min ago",
-    },
-    {
-      id: "agent_3",
-      name: "Document Processor",
-      type: "vision",
-      status: "training",
-      conversations: 156,
-      lastActive: "1 hour ago",
-    },
-  ];
+  const conversationData = dashboardData?.conversationVolume || [];
+  const agentTypeData = dashboardData?.agentTypes || [];
+  const responseTimeData = dashboardData?.responseTimeTrends || [];
+  const recentAgents = dashboardData?.recentAgents || [];
 
   const getAgentIcon = (type: string) => {
     switch (type) {
@@ -150,12 +139,48 @@ export default function DashboardOverview() {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Create Agent
+          {error && (
+            <Button 
+              variant="outline" 
+              onClick={loadDashboardData}
+              disabled={loading}
+              className="text-red-600 border-red-200 hover:bg-red-50"
+            >
+              {loading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-600 mr-2"></div>
+              ) : (
+                <AlertCircle className="h-4 w-4 mr-2" />
+              )}
+              Retry
+            </Button>
+          )}
+          <Button asChild>
+            <Link to="/dashboard/agents">
+              <Plus className="h-4 w-4 mr-2" />
+              Create Agent
+            </Link>
           </Button>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+              <div>
+                <p className="text-sm font-medium text-red-800">
+                  Failed to load dashboard data
+                </p>
+                <p className="text-sm text-red-600">
+                  {error}. Please try refreshing the page.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -167,9 +192,13 @@ export default function DashboardOverview() {
             <Bot className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAgents}</div>
+            {loading ? (
+              <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+            ) : (
+              <div className="text-2xl font-bold">{stats.totalAgents}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+2</span> from last month
+              AI agents in your account
             </p>
           </CardContent>
         </Card>
@@ -182,11 +211,15 @@ export default function DashboardOverview() {
             <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.activeConversations}
-            </div>
+            {loading ? (
+              <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+            ) : (
+              <div className="text-2xl font-bold">
+                {stats.activeConversations}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+12%</span> from yesterday
+              Currently ongoing conversations
             </p>
           </CardContent>
         </Card>
@@ -199,9 +232,13 @@ export default function DashboardOverview() {
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.avgResponseTime}</div>
+            {loading ? (
+              <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+            ) : (
+              <div className="text-2xl font-bold">{stats.avgResponseTime}</div>
+            )}
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">-0.3s</span> from last week
+              Average agent response time
             </p>
           </CardContent>
         </Card>
@@ -209,16 +246,20 @@ export default function DashboardOverview() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              Satisfaction Score
+              Total Conversations
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {stats.satisfactionScore}/5
-            </div>
+            {loading ? (
+              <div className="h-8 bg-muted animate-pulse rounded mb-2"></div>
+            ) : (
+              <div className="text-2xl font-bold">
+                {stats.totalConversations}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+0.2</span> from last month
+              All-time conversation count
             </p>
           </CardContent>
         </Card>
@@ -286,30 +327,45 @@ export default function DashboardOverview() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <AreaChart data={conversationData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Area
-                  type="monotone"
-                  dataKey="conversations"
-                  stackId="1"
-                  stroke="#8884d8"
-                  fill="#8884d8"
-                  fillOpacity={0.6}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="resolved"
-                  stackId="2"
-                  stroke="#82ca9d"
-                  fill="#82ca9d"
-                  fillOpacity={0.6}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <LoadingState />
+            ) : conversationData.length === 0 ? (
+              <EmptyState
+                icon={MessageSquare}
+                title="No conversations yet"
+                description="Start conversations with your agents to see volume trends here"
+                actionText="Create Agent"
+                actionHref="/dashboard/agents"
+                actionIcon={Plus}
+              />
+            ) : (
+              <ChartErrorBoundary onRetry={loadDashboardData}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={conversationData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Area
+                      type="monotone"
+                      dataKey="conversations"
+                      stackId="1"
+                      stroke="#8884d8"
+                      fill="#8884d8"
+                      fillOpacity={0.6}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="resolved"
+                      stackId="2"
+                      stroke="#82ca9d"
+                      fill="#82ca9d"
+                      fillOpacity={0.6}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </ChartErrorBoundary>
+            )}
           </CardContent>
         </Card>
 
@@ -319,21 +375,36 @@ export default function DashboardOverview() {
             <CardDescription>Average response time by hour</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={responseTimeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="hour" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="time"
-                  stroke="#8884d8"
-                  strokeWidth={2}
-                  dot={{ fill: "#8884d8" }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <LoadingState />
+            ) : responseTimeData.length === 0 ? (
+              <EmptyState
+                icon={Clock}
+                title="No response time data"
+                description="Response time trends will appear here once your agents start handling conversations"
+                actionText="View Agents"
+                actionHref="/dashboard/agents"
+                actionIcon={Bot}
+              />
+            ) : (
+              <ChartErrorBoundary onRetry={loadDashboardData}>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={responseTimeData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="hour" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line
+                      type="monotone"
+                      dataKey="time"
+                      stroke="#8884d8"
+                      strokeWidth={2}
+                      dot={{ fill: "#8884d8" }}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartErrorBoundary>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -346,39 +417,57 @@ export default function DashboardOverview() {
             <CardDescription>Breakdown by agent type</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-center">
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={agentTypeData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {agentTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
+            {loading ? (
+              <LoadingState height="h-[200px]" />
+            ) : agentTypeData.length === 0 ? (
+              <EmptyState
+                icon={Bot}
+                title="No agents created"
+                description="Create your first AI agent to see distribution data"
+                actionText="Create Agent"
+                actionHref="/dashboard/agents"
+                actionIcon={Plus}
+                height="h-[200px]"
+              />
+            ) : (
+              <ChartErrorBoundary onRetry={loadDashboardData}>
+                <>
+                  <div className="flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height={200}>
+                      <PieChart>
+                        <Pie
+                          data={agentTypeData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {agentTypeData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="flex justify-center space-x-6 mt-4">
+                    {agentTypeData.map((entry) => (
+                      <div key={entry.name} className="flex items-center space-x-2">
+                        <div
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: entry.color }}
+                        ></div>
+                        <span className="text-sm">
+                          {entry.name} ({entry.value})
+                        </span>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="flex justify-center space-x-6 mt-4">
-              {agentTypeData.map((entry) => (
-                <div key={entry.name} className="flex items-center space-x-2">
-                  <div
-                    className="w-3 h-3 rounded-full"
-                    style={{ backgroundColor: entry.color }}
-                  ></div>
-                  <span className="text-sm">
-                    {entry.name} ({entry.value}%)
-                  </span>
-                </div>
-              ))}
-            </div>
+                  </div>
+                </>
+              </ChartErrorBoundary>
+            )}
           </CardContent>
         </Card>
 
@@ -398,43 +487,59 @@ export default function DashboardOverview() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {recentAgents.map((agent) => (
-                <div
-                  key={agent.id}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-                      {getAgentIcon(agent.type)}
+            {loading ? (
+              <LoadingState height="h-[200px]" />
+            ) : recentAgents.length === 0 ? (
+              <EmptyState
+                icon={Bot}
+                title="No agents yet"
+                description="Create your first AI agent to get started"
+                actionText="Create Agent"
+                actionHref="/dashboard/agents"
+                actionIcon={Plus}
+                height="h-[200px]"
+              />
+            ) : (
+              <div className="space-y-4">
+                {recentAgents.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                        {getAgentIcon(agent.type)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{agent.name}</p>
+                        <div className="flex items-center space-x-2">
+                          <Badge
+                            variant="outline"
+                            className={getStatusColor(agent.status)}
+                          >
+                            {agent.status}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            {agent.conversations} conversations
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium">{agent.name}</p>
-                      <div className="flex items-center space-x-2">
-                        <Badge
-                          variant="outline"
-                          className={getStatusColor(agent.status)}
-                        >
-                          {agent.status}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {agent.conversations} conversations
+                    <div className="text-right">
+                      <p className="text-xs text-muted-foreground">
+                        {agent.lastActive}
+                      </p>
+                      <div className="flex items-center space-x-1">
+                        <Activity className={`h-3 w-3 ${agent.status === 'active' ? 'text-green-500' : 'text-gray-400'}`} />
+                        <span className={`text-xs ${agent.status === 'active' ? 'text-green-600' : 'text-gray-500'}`}>
+                          {agent.status === 'active' ? 'Active' : 'Inactive'}
                         </span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">
-                      {agent.lastActive}
-                    </p>
-                    <div className="flex items-center space-x-1">
-                      <Activity className="h-3 w-3 text-green-500" />
-                      <span className="text-xs text-green-600">Active</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -447,7 +552,7 @@ export default function DashboardOverview() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Link to="/dashboard/agents/new">
+            <Link to="/dashboard/agents">
               <div className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer">
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">

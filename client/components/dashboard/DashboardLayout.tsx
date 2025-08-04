@@ -212,7 +212,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Separator */}
           <div className="h-6 w-px bg-border lg:hidden" />
 
-          <div className="flex flex-1 gap-x-4 self-stretch lg:gap-x-6">
+          <div className="flex flex-1 justify-between items-center gap-x-4 self-stretch lg:gap-x-6">
             <div className="relative flex flex-1 max-w-md">
               <Search className="pointer-events-none absolute inset-y-0 left-0 h-full w-5 text-muted-foreground pl-3" />
               <input
@@ -222,13 +222,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               />
             </div>
             <div className="flex items-center gap-x-4 lg:gap-x-6">
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/dashboard/agents">
-                  <Plus className="h-4 w-4 mr-2" />
-                  New Agent
-                </Link>
-              </Button>
-
               {/* Notifications */}
               <Button variant="ghost" size="sm">
                 <Bell className="h-5 w-5" />
