@@ -5,7 +5,7 @@
 
 import { n8nService, type N8NWorkflow, type WorkflowTemplate } from './n8n-service';
 import { conversationManager } from './conversation-manager';
-import { agentService } from './agent-service';
+import * as agentService from './agent-service';
 
 interface WorkflowTrigger {
   id: string;

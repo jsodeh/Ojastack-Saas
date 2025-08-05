@@ -115,10 +115,10 @@ export async function fetchKnowledgeBaseStats(userId: string): Promise<Knowledge
   }
 
   try {
-    // Fetch knowledge bases count
+    // Fetch knowledge bases count and total size
     const { data: knowledgeBases, error: kbError } = await supabase
       .from('knowledge_bases')
-      .select('id, total_size')
+      .select('id, documents_count, total_size_bytes')
       .eq('user_id', userId);
 
     if (kbError) {
@@ -128,7 +128,7 @@ export async function fetchKnowledgeBaseStats(userId: string): Promise<Knowledge
     // Fetch documents count and processing status
     const { data: documents, error: docsError } = await supabase
       .from('documents')
-      .select('id, file_size, status, knowledge_base_id')
+      .select('id, size_bytes, status, knowledge_base_id')
       .in('knowledge_base_id', knowledgeBases?.map(kb => kb.id) || []);
 
     if (docsError) {
@@ -138,7 +138,7 @@ export async function fetchKnowledgeBaseStats(userId: string): Promise<Knowledge
     // Calculate statistics
     const totalBases = knowledgeBases?.length || 0;
     const totalDocuments = documents?.length || 0;
-    const storageUsed = documents?.reduce((sum, doc) => sum + (doc.file_size || 0), 0) || 0;
+    const storageUsed = documents?.reduce((sum, doc) => sum + (doc.size_bytes || 0), 0) || 0;
     const processingQueue = documents?.filter(doc => doc.status === 'processing').length || 0;
 
     return {
@@ -175,6 +175,8 @@ export async function fetchKnowledgeBases(userId: string): Promise<KnowledgeBase
         name,
         description,
         status,
+        documents_count,
+        total_size_bytes,
         created_at,
         updated_at,
         user_id
@@ -190,34 +192,14 @@ export async function fetchKnowledgeBases(userId: string): Promise<KnowledgeBase
       return [];
     }
 
-    // Fetch document counts and sizes for each knowledge base
-    const knowledgeBaseIds = knowledgeBases.map(kb => kb.id);
-    const { data: documents, error: docsError } = await supabase
-      .from('documents')
-      .select('knowledge_base_id, file_size')
-      .in('knowledge_base_id', knowledgeBaseIds);
-
-    if (docsError) {
-      throw handleSupabaseError(docsError, 'fetchKnowledgeBases - documents');
-    }
-
-    // Group documents by knowledge base
-    const docsByKB = documents?.reduce((acc, doc) => {
-      if (!acc[doc.knowledge_base_id]) {
-        acc[doc.knowledge_base_id] = [];
-      }
-      acc[doc.knowledge_base_id].push(doc);
-      return acc;
-    }, {} as Record<string, any[]>) || {};
-
-    // Map knowledge bases with document counts and sizes
+    // Map knowledge bases with correct field names
     return knowledgeBases.map(kb => ({
       id: kb.id,
       name: kb.name,
       description: kb.description || '',
       status: kb.status || 'active',
-      documentCount: docsByKB[kb.id]?.length || 0,
-      totalSize: docsByKB[kb.id]?.reduce((sum, doc) => sum + (doc.file_size || 0), 0) || 0,
+      documentCount: kb.documents_count || 0,
+      totalSize: kb.total_size_bytes || 0,
       lastUpdated: kb.updated_at,
       createdAt: kb.created_at,
       userId: kb.user_id,
@@ -269,12 +251,11 @@ export async function fetchRecentDocuments(userId: string, limit: number = 10): 
       .select(`
         id,
         knowledge_base_id,
-        filename,
-        file_size,
+        name,
+        size_bytes,
         status,
-        chunk_count,
         created_at,
-        updated_at
+        processed_at
       `)
       .in('knowledge_base_id', knowledgeBaseIds)
       .order('created_at', { ascending: false })
@@ -289,12 +270,12 @@ export async function fetchRecentDocuments(userId: string, limit: number = 10): 
     return documents.map(doc => ({
       id: doc.id,
       knowledgeBaseId: doc.knowledge_base_id,
-      filename: doc.filename,
-      fileSize: doc.file_size || 0,
+      filename: doc.name,
+      fileSize: doc.size_bytes || 0,
       status: doc.status || 'processing',
-      chunkCount: doc.chunk_count || 0,
+      chunkCount: 0, // We don't have chunk count in this schema
       createdAt: doc.created_at,
-      updatedAt: doc.updated_at,
+      updatedAt: doc.processed_at || doc.created_at,
       knowledgeBaseName: kbNameMap[doc.knowledge_base_id],
     }));
   } catch (error) {

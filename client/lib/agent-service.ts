@@ -1,484 +1,528 @@
-import { supabase } from './agent-runtime';
-import type { Agent, Conversation, Message } from './agent-runtime';
+import { supabase } from './supabase';
 
-export interface AgentConfig {
+// Types for Agent System
+export interface AgentTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  capabilities: AgentCapabilities;
+  default_personality: PersonalityConfig;
+  sample_conversations: Conversation[];
+  rating: number;
+  usage_count: number;
+  featured: boolean;
+  preview_image?: string;
+  tags: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentCapabilities {
+  text: {
+    enabled: boolean;
+    provider: 'openai' | 'anthropic';
+    model: string;
+  };
+  voice: {
+    enabled: boolean;
+    provider: 'elevenlabs';
+    voiceId: string;
+  };
+  image: {
+    enabled: boolean;
+    provider?: 'openai' | 'anthropic';
+  };
+  video: {
+    enabled: boolean;
+    provider?: 'livekit';
+  };
+  tools: string[];
+}
+
+export interface PersonalityConfig {
+  tone: 'professional' | 'friendly' | 'casual' | 'formal' | 'enthusiastic' | 'encouraging';
+  creativityLevel: number; // 0-100
+  responseStyle: {
+    length: 'concise' | 'detailed' | 'comprehensive';
+    formality: 'casual' | 'professional' | 'formal';
+    empathy: 'low' | 'medium' | 'high';
+    proactivity: 'reactive' | 'balanced' | 'proactive';
+  };
+  systemPrompt: string;
+}
+
+export interface Conversation {
+  id: string;
+  messages: Message[];
+}
+
+export interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp?: string;
+}
+
+export interface UserAgent {
+  id: string;
+  user_id: string;
+  template_id?: string;
   name: string;
   description?: string;
-  type: 'chat' | 'voice' | 'multimodal';
-  personality: string;
-  instructions: string;
-  model?: string;
-  temperature?: number;
-  max_tokens?: number;
-  tools?: string[];
-  voice_settings?: {
-    voice_id: string;
-    stability: number;
-    similarity_boost: number;
-    style: number;
-  };
+  personality_config: PersonalityConfig;
+  capabilities_config: AgentCapabilities;
+  knowledge_bases: string[];
+  deployment_channels: DeploymentChannel[];
+  n8n_workflow_id?: string;
+  status: 'draft' | 'testing' | 'active' | 'paused' | 'error';
+  is_draft: boolean;
+  draft_step: number;
+  draft_data: any;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface ConversationCreateParams {
+export interface DeploymentChannel {
+  type: 'webchat' | 'whatsapp' | 'email' | 'slack';
+  enabled: boolean;
+  config: Record<string, any>;
+  status: 'pending' | 'active' | 'error';
+}
+
+export interface TemplateFilters {
+  category?: string;
+  capabilities?: string[];
+  featured?: boolean;
+  search?: string;
+  sortBy?: 'rating' | 'usage' | 'name' | 'created_at';
+  sortOrder?: 'asc' | 'desc';
+}
+
+export interface AgentAnalytics {
+  id: string;
   agent_id: string;
-  customer_id: string;
-  channel: string;
-  customer_name?: string;
-  customer_phone?: string;
-  metadata?: any;
+  date: string;
+  conversations_count: number;
+  messages_count: number;
+  response_time_avg?: number;
+  satisfaction_score?: number;
+  channel_breakdown: Record<string, number>;
+  error_count: number;
+  success_rate?: number;
 }
 
-/**
- * Agent Service
- * High-level service for agent lifecycle management
- */
-export class AgentService {
+// Error handling
+export class AgentServiceError extends Error {
+  public readonly type: 'network' | 'database' | 'permission' | 'validation' | 'unknown';
+  public readonly code?: string;
+  public readonly retryable: boolean;
+
+  constructor(error: {
+    type: AgentServiceError['type'];
+    message: string;
+    code?: string;
+    retryable: boolean;
+  }) {
+    super(error.message);
+    this.name = 'AgentServiceError';
+    this.type = error.type;
+    this.code = error.code;
+    this.retryable = error.retryable;
+  }
+}
+
+function handleSupabaseError(error: any, operation: string): AgentServiceError {
+  console.error(`Error in ${operation}:`, error);
+
+  // Network/connection errors
+  if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+    return new AgentServiceError({
+      type: 'network',
+      message: 'Unable to connect to the server. Please check your internet connection.',
+      retryable: true,
+    });
+  }
+
+  // Permission errors
+  if (error.code === 'PGRST301' || error.message?.includes('permission')) {
+    return new AgentServiceError({
+      type: 'permission',
+      message: 'You do not have permission to access this data.',
+      code: error.code,
+      retryable: false,
+    });
+  }
+
+  // Database errors
+  if (error.code?.startsWith('PGRST') || error.code?.startsWith('23')) {
+    return new AgentServiceError({
+      type: 'database',
+      message: 'Database error occurred. Please try again later.',
+      code: error.code,
+      retryable: true,
+    });
+  }
+
+  // Validation errors
+  if (error.code?.startsWith('22') || error.message?.includes('violates')) {
+    return new AgentServiceError({
+      type: 'validation',
+      message: 'Invalid data provided. Please check your input.',
+      code: error.code,
+      retryable: false,
+    });
+  }
+
+  // Unknown errors
+  return new AgentServiceError({
+    type: 'unknown',
+    message: error.message || 'An unexpected error occurred.',
+    code: error.code,
+    retryable: true,
+  });
+}
+
+// Agent Template Service Functions
+export async function fetchAgentTemplates(filters: TemplateFilters = {}): Promise<AgentTemplate[]> {
+  try {
+    let query = supabase
+      .from('agent_templates')
+      .select('*');
+
+    // Apply filters
+    if (filters.category) {
+      query = query.eq('category', filters.category);
+    }
+
+    if (filters.featured !== undefined) {
+      query = query.eq('featured', filters.featured);
+    }
+
+    if (filters.search) {
+      query = query.or(`name.ilike.%${filters.search}%,description.ilike.%${filters.search}%,tags.cs.{${filters.search}}`);
+    }
+
+    // Apply sorting
+    const sortBy = filters.sortBy || 'rating';
+    const sortOrder = filters.sortOrder || 'desc';
+    
+    if (sortBy === 'rating') {
+      query = query.order('rating', { ascending: sortOrder === 'asc' });
+    } else if (sortBy === 'usage') {
+      query = query.order('usage_count', { ascending: sortOrder === 'asc' });
+    } else if (sortBy === 'name') {
+      query = query.order('name', { ascending: sortOrder === 'asc' });
+    } else {
+      query = query.order('created_at', { ascending: sortOrder === 'asc' });
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw handleSupabaseError(error, 'fetchAgentTemplates');
+    }
+
+    return data || [];
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'fetchAgentTemplates');
+  }
+}
+
+export async function fetchAgentTemplate(id: string): Promise<AgentTemplate | null> {
+  try {
+    const { data, error } = await supabase
+      .from('agent_templates')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Not found
+      }
+      throw handleSupabaseError(error, 'fetchAgentTemplate');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'fetchAgentTemplate');
+  }
+}
+
+export async function getTemplateCategories(): Promise<string[]> {
+  try {
+    const { data, error } = await supabase
+      .from('agent_templates')
+      .select('category')
+      .order('category');
+
+    if (error) {
+      throw handleSupabaseError(error, 'getTemplateCategories');
+    }
+
+    const categories = [...new Set(data?.map(item => item.category) || [])];
+    return categories;
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'getTemplateCategories');
+  }
+}
+
+export async function incrementTemplateUsage(templateId: string): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('increment_template_usage', {
+      template_uuid: templateId
+    });
+
+    if (error) {
+      throw handleSupabaseError(error, 'incrementTemplateUsage');
+    }
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'incrementTemplateUsage');
+  }
+}
+
+// User Agent Service Functions
+export async function fetchUserAgents(userId: string): Promise<UserAgent[]> {
+  if (!userId) {
+    throw new AgentServiceError({
+      type: 'validation',
+      message: 'User ID is required to fetch agents.',
+      retryable: false,
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_agents')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      throw handleSupabaseError(error, 'fetchUserAgents');
+    }
+
+    return data || [];
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'fetchUserAgents');
+  }
+}
+
+export async function fetchUserAgent(id: string, userId: string): Promise<UserAgent | null> {
+  if (!userId) {
+    throw new AgentServiceError({
+      type: 'validation',
+      message: 'User ID is required to fetch agent.',
+      retryable: false,
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_agents')
+      .select('*')
+      .eq('id', id)
+      .eq('user_id', userId)
+      .single();
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null; // Not found
+      }
+      throw handleSupabaseError(error, 'fetchUserAgent');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'fetchUserAgent');
+  }
+}
+
+export async function createUserAgent(agent: Partial<UserAgent>): Promise<UserAgent> {
+  if (!agent.user_id) {
+    throw new AgentServiceError({
+      type: 'validation',
+      message: 'User ID is required to create agent.',
+      retryable: false,
+    });
+  }
+
+  if (!agent.name) {
+    throw new AgentServiceError({
+      type: 'validation',
+      message: 'Agent name is required.',
+      retryable: false,
+    });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('user_agents')
+      .insert([agent])
+      .select()
+      .single();
+
+    if (error) {
+      throw handleSupabaseError(error, 'createUserAgent');
+    }
+
+    // Increment template usage if template was used
+    if (agent.template_id) {
+      await incrementTemplateUsage(agent.template_id);
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'createUserAgent');
+  }
+}
+
+export async function updateUserAgent(id: string, updates: Partial<UserAgent>): Promise<UserAgent> {
+  try {
+    const { data, error } = await supabase
+      .from('user_agents')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      throw handleSupabaseError(error, 'updateUserAgent');
+    }
+
+    return data;
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'updateUserAgent');
+  }
+}
+
+export async function deleteUserAgent(id: string, userId: string): Promise<void> {
+  if (!userId) {
+    throw new AgentServiceError({
+      type: 'validation',
+      message: 'User ID is required to delete agent.',
+      retryable: false,
+    });
+  }
+
+  try {
+    const { error } = await supabase
+      .from('user_agents')
+      .delete()
+      .eq('id', id)
+      .eq('user_id', userId);
+
+    if (error) {
+      throw handleSupabaseError(error, 'deleteUserAgent');
+    }
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'deleteUserAgent');
+  }
+}
+
+// Agent Analytics Functions
+export async function fetchAgentAnalytics(
+  agentId: string, 
+  startDate?: string, 
+  endDate?: string
+): Promise<AgentAnalytics[]> {
+  try {
+    let query = supabase
+      .from('agent_analytics')
+      .select('*')
+      .eq('agent_id', agentId)
+      .order('date', { ascending: false });
+
+    if (startDate) {
+      query = query.gte('date', startDate);
+    }
+
+    if (endDate) {
+      query = query.lte('date', endDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      throw handleSupabaseError(error, 'fetchAgentAnalytics');
+    }
+
+    return data || [];
+  } catch (error) {
+    if (error instanceof AgentServiceError) {
+      throw error;
+    }
+    throw handleSupabaseError(error, 'fetchAgentAnalytics');
+  }
+}
+
+// Utility functions
+export function getCapabilityIcons(capabilities: AgentCapabilities): string[] {
+  const icons: string[] = [];
   
-  /**
-   * Create a new agent
-   */
-  async createAgent(config: AgentConfig, userId: string): Promise<Agent | null> {
-    try {
-      // Generate unique agent ID and webhook URLs
-      const agentId = `agent_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-      const webhookUrls = {
-        whatsapp: `${window.location.origin}/.netlify/functions/whatsapp-webhook?agent_id=${agentId}`,
-        slack: `${window.location.origin}/.netlify/functions/slack-webhook?agent_id=${agentId}`,
-        web: `${window.location.origin}/.netlify/functions/web-webhook?agent_id=${agentId}`,
-      };
-
-      // Create agent in database
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .insert({
-          id: agentId,
-          user_id: userId,
-          name: config.name,
-          description: config.description || '',
-          type: config.type,
-          status: 'inactive',
-          personality: config.personality,
-          instructions: config.instructions,
-          settings: {
-            model: config.model || 'gpt-4',
-            temperature: config.temperature || 0.7,
-            max_tokens: config.max_tokens || 500,
-          },
-          tools: config.tools || [],
-          voice_settings: config.voice_settings || {},
-          deployment_urls: webhookUrls,
-          conversation_count: 0,
-          last_active: null,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error creating agent:', error);
-        return null;
-      }
-
-      // Create default knowledge base for the agent
-      await this.createDefaultKnowledgeBase(agentId, userId, config.name);
-
-      console.log(`✅ Agent created: ${agent.name} (${agent.id})`);
-      return agent;
-
-    } catch (error) {
-      console.error('Error creating agent:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Update an existing agent
-   */
-  async updateAgent(agentId: string, config: Partial<AgentConfig>, userId: string): Promise<Agent | null> {
-    try {
-      const updateData: any = {};
-
-      if (config.name) updateData.name = config.name;
-      if (config.description !== undefined) updateData.description = config.description;
-      if (config.type) updateData.type = config.type;
-      if (config.personality) updateData.personality = config.personality;
-      if (config.instructions) updateData.instructions = config.instructions;
-      if (config.tools) updateData.tools = config.tools;
-      if (config.voice_settings) updateData.voice_settings = config.voice_settings;
-
-      if (config.model || config.temperature !== undefined || config.max_tokens) {
-        // Get current settings
-        const { data: currentAgent } = await supabase
-          .from('agents')
-          .select('settings')
-          .eq('id', agentId)
-          .eq('user_id', userId)
-          .single();
-
-        const currentSettings = currentAgent?.settings || {};
-        updateData.settings = {
-          ...currentSettings,
-          ...(config.model && { model: config.model }),
-          ...(config.temperature !== undefined && { temperature: config.temperature }),
-          ...(config.max_tokens && { max_tokens: config.max_tokens }),
-        };
-      }
-
-      updateData.updated_at = new Date().toISOString();
-
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .update(updateData)
-        .eq('id', agentId)
-        .eq('user_id', userId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error updating agent:', error);
-        return null;
-      }
-
-      console.log(`✅ Agent updated: ${agent.name} (${agent.id})`);
-      return agent;
-
-    } catch (error) {
-      console.error('Error updating agent:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Delete an agent
-   */
-  async deleteAgent(agentId: string, userId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('agents')
-        .delete()
-        .eq('id', agentId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Database error deleting agent:', error);
-        return false;
-      }
-
-      console.log(`🗑️ Agent deleted: ${agentId}`);
-      return true;
-
-    } catch (error) {
-      console.error('Error deleting agent:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Get agent by ID
-   */
-  async getAgent(agentId: string, userId: string): Promise<Agent | null> {
-    try {
-      const { data: agent, error } = await supabase
-        .from('agents')
-        .select(`
-          *,
-          knowledge_bases (
-            id,
-            name,
-            description,
-            documents_count,
-            total_size_bytes
-          )
-        `)
-        .eq('id', agentId)
-        .eq('user_id', userId)
-        .single();
-
-      if (error) {
-        console.error('Database error getting agent:', error);
-        return null;
-      }
-
-      return agent;
-
-    } catch (error) {
-      console.error('Error getting agent:', error);
-      return null;
-    }
-  }
-
-  /**
-   * List all agents for a user
-   */
-  async listAgents(userId: string): Promise<Agent[]> {
-    try {
-      const { data: agents, error } = await supabase
-        .from('agents')
-        .select(`
-          *,
-          knowledge_bases (
-            id,
-            name,
-            documents_count
-          )
-        `)
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Database error listing agents:', error);
-        return [];
-      }
-
-      return agents || [];
-
-    } catch (error) {
-      console.error('Error listing agents:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Deploy agent (activate)
-   */
-  async deployAgent(agentId: string, userId: string, channels: string[] = []): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('agents')
-        .update({ 
-          status: 'active',
-          last_active: new Date().toISOString(),
-          integrations: channels,
-        })
-        .eq('id', agentId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Database error deploying agent:', error);
-        return false;
-      }
-
-      console.log(`🚀 Agent deployed: ${agentId} on channels: ${channels.join(', ')}`);
-      return true;
-
-    } catch (error) {
-      console.error('Error deploying agent:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Stop agent deployment
-   */
-  async stopAgent(agentId: string, userId: string): Promise<boolean> {
-    try {
-      const { error } = await supabase
-        .from('agents')
-        .update({ status: 'inactive' })
-        .eq('id', agentId)
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Database error stopping agent:', error);
-        return false;
-      }
-
-      console.log(`⏹️ Agent stopped: ${agentId}`);
-      return true;
-
-    } catch (error) {
-      console.error('Error stopping agent:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Create a new conversation
-   */
-  async createConversation(params: ConversationCreateParams): Promise<Conversation | null> {
-    try {
-      const { data: conversation, error } = await supabase
-        .from('conversations')
-        .insert({
-          agent_id: params.agent_id,
-          user_id: params.customer_id, // This should be the agent owner's user_id
-          customer_id: params.customer_id,
-          channel: params.channel,
-          status: 'active',
-          customer_name: params.customer_name,
-          customer_phone: params.customer_phone,
-          metadata: params.metadata || {},
-          escalation_requested: false,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error creating conversation:', error);
-        return null;
-      }
-
-      // Update agent conversation count
-      await this.incrementConversationCount(params.agent_id);
-
-      console.log(`💬 Conversation created: ${conversation.id}`);
-      return conversation;
-
-    } catch (error) {
-      console.error('Error creating conversation:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Add message to conversation
-   */
-  async addMessage(conversationId: string, role: 'user' | 'agent' | 'system', content: string, type: string = 'text', metadata: any = {}): Promise<Message | null> {
-    try {
-      const { data: message, error } = await supabase
-        .from('messages')
-        .insert({
-          conversation_id: conversationId,
-          role,
-          content,
-          type,
-          metadata,
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Database error adding message:', error);
-        return null;
-      }
-
-      return message;
-
-    } catch (error) {
-      console.error('Error adding message:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Get conversation messages
-   */
-  async getConversationMessages(conversationId: string): Promise<Message[]> {
-    try {
-      const { data: messages, error } = await supabase
-        .from('messages')
-        .select('*')
-        .eq('conversation_id', conversationId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        console.error('Database error getting messages:', error);
-        return [];
-      }
-
-      return messages || [];
-
-    } catch (error) {
-      console.error('Error getting messages:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Get agent analytics
-   */
-  async getAgentAnalytics(agentId: string, days: number = 30): Promise<any[]> {
-    try {
-      const { data: analytics, error } = await supabase
-        .from('agent_analytics')
-        .select('*')
-        .eq('agent_id', agentId)
-        .gte('date', new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
-        .order('date', { ascending: false });
-
-      if (error) {
-        console.error('Database error getting analytics:', error);
-        return [];
-      }
-
-      return analytics || [];
-
-    } catch (error) {
-      console.error('Error getting analytics:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Create default knowledge base for agent
-   */
-  private async createDefaultKnowledgeBase(agentId: string, userId: string, agentName: string) {
-    try {
-      const { data: knowledgeBase, error } = await supabase
-        .from('knowledge_bases')
-        .insert({
-          user_id: userId,
-          name: `${agentName} Knowledge Base`,
-          description: `Default knowledge base for ${agentName}`,
-          status: 'active',
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.warn('Failed to create knowledge base:', error);
-        return;
-      }
-
-      // Link knowledge base to agent
-      await supabase
-        .from('agents')
-        .update({ knowledge_base_id: knowledgeBase.id })
-        .eq('id', agentId);
-
-      console.log(`📚 Knowledge base created for agent: ${agentName}`);
-
-    } catch (error) {
-      console.warn('Error creating default knowledge base:', error);
-    }
-  }
-
-  /**
-   * Increment agent conversation count
-   */
-  private async incrementConversationCount(agentId: string) {
-    try {
-      const { error } = await supabase.rpc('increment_conversation_count', {
-        agent_id: agentId
-      });
-
-      if (error) {
-        console.warn('Failed to increment conversation count:', error);
-      }
-    } catch (error) {
-      console.warn('Error incrementing conversation count:', error);
-    }
-  }
-
-  /**
-   * Test agent configuration
-   */
-  async testAgent(agentId: string, testMessage: string): Promise<string | null> {
-    try {
-      // This would integrate with the AI service to test the agent
-      // For now, return a mock response
-      console.log(`🧪 Testing agent ${agentId} with message: "${testMessage}"`);
-      
-      // Simulate AI processing time
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return `Test response from agent ${agentId}: I received your message "${testMessage}" and I'm working correctly!`;
-
-    } catch (error) {
-      console.error('Error testing agent:', error);
-      return null;
-    }
-  }
+  if (capabilities.text?.enabled) icons.push('💬');
+  if (capabilities.voice?.enabled) icons.push('🎤');
+  if (capabilities.image?.enabled) icons.push('🖼️');
+  if (capabilities.video?.enabled) icons.push('📹');
+  
+  return icons;
 }
 
-// Create singleton instance
-export const agentService = new AgentService();
+export function getCapabilityLabels(capabilities: AgentCapabilities): string[] {
+  const labels: string[] = [];
+  
+  if (capabilities.text?.enabled) labels.push('Text');
+  if (capabilities.voice?.enabled) labels.push('Voice');
+  if (capabilities.image?.enabled) labels.push('Image');
+  if (capabilities.video?.enabled) labels.push('Video');
+  
+  return labels;
+}
+
+export function formatAgentStatus(status: UserAgent['status']): {
+  label: string;
+  color: string;
+  icon: string;
+} {
+  switch (status) {
+    case 'draft':
+      return { label: 'Draft', color: 'gray', icon: '📝' };
+    case 'testing':
+      return { label: 'Testing', color: 'yellow', icon: '🧪' };
+    case 'active':
+      return { label: 'Active', color: 'green', icon: '✅' };
+    case 'paused':
+      return { label: 'Paused', color: 'orange', icon: '⏸️' };
+    case 'error':
+      return { label: 'Error', color: 'red', icon: '❌' };
+    default:
+      return { label: 'Unknown', color: 'gray', icon: '❓' };
+  }
+}

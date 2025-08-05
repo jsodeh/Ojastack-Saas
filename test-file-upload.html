@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .upload-zone {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .upload-zone.drag-active {
+            border-color: #007bff;
+            background-color: #f0f8ff;
+            transform: scale(1.02);
+        }
+        .file-list {
+            margin-top: 20px;
+        }
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            background: white;
+        }
+        .file-icon {
+            width: 32px;
+            height: 32px;
+            margin-right: 12px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .file-info {
+            flex: 1;
+        }
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+        .file-size {
+            font-size: 12px;
+            color: #666;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #f0f0f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            transition: width 0.3s;
+        }
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .status {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+        .status.uploading { color: #007bff; }
+        .status.processing { color: #ffc107; }
+        .status.complete { color: #28a745; }
+        .status.error { color: #dc3545; }
+        .supported-types {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .type-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .type-item {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h1>File Upload Interface Test</h1>
+    
+    <div id="upload-zone" class="upload-zone">
+        <input type="file" id="file-input" multiple style="display: none;" accept=".pdf,.docx,.doc,.xlsx,.xls,.txt,.md,.jpg,.jpeg,.png">
+        <div>
+            <div style="font-size: 48px; margin-bottom: 16px;">📁</div>
+            <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">
+                Drag & drop files here, or click to browse
+            </p>
+            <p style="font-size: 14px; color: #666;">
+                Upload up to 10 files at once
+            </p>
+        </div>
+    </div>
+
+    <div id="file-list" class="file-list" style="display: none;">
+        <h3>Uploaded Files</h3>
+        <div id="files-container"></div>
+    </div>
+
+    <div class="supported-types">
+        <h4>Supported File Types</h4>
+        <div class="type-grid">
+            <div class="type-item">📄 PDF documents (50MB max)</div>
+            <div class="type-item">📝 Word documents (25MB max)</div>
+            <div class="type-item">📊 Excel spreadsheets (25MB max)</div>
+            <div class="type-item">📄 Text files (10MB max)</div>
+            <div class="type-item">📄 Markdown files (10MB max)</div>
+            <div class="type-item">🖼️ JPEG images (10MB max)</div>
+            <div class="type-item">🖼️ PNG images (10MB max)</div>
+        </div>
+    </div>
+
+    <script>
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const fileList = document.getElementById('file-list');
+        const filesContainer = document.getElementById('files-container');
+        
+        let uploadedFiles = [];
+
+        const supportedTypes = {
+            'application/pdf': { icon: '📄', maxSize: 50 * 1024 * 1024 },
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': { icon: '📝', maxSize: 25 * 1024 * 1024 },
+            'application/msword': { icon: '📝', maxSize: 25 * 1024 * 1024 },
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': { icon: '📊', maxSize: 25 * 1024 * 1024 },
+            'application/vnd.ms-excel': { icon: '📊', maxSize: 25 * 1024 * 1024 },
+            'text/plain': { icon: '📄', maxSize: 10 * 1024 * 1024 },
+            'text/markdown': { icon: '📄', maxSize: 10 * 1024 * 1024 },
+            'image/jpeg': { icon: '🖼️', maxSize: 10 * 1024 * 1024 },
+            'image/png': { icon: '🖼️', maxSize: 10 * 1024 * 1024 }
+        };
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        function validateFile(file) {
+            const type = supportedTypes[file.type];
+            if (!type) {
+                return { valid: false, error: 'File type not supported' };
+            }
+            if (file.size > type.maxSize) {
+                return { valid: false, error: `File size exceeds ${formatFileSize(type.maxSize)} limit` };
+            }
+            return { valid: true };
+        }
+
+        function addFiles(files) {
+            const validFiles = [];
+            const errors = [];
+
+            Array.from(files).forEach(file => {
+                const validation = validateFile(file);
+                if (validation.valid) {
+                    const fileItem = {
+                        id: Date.now() + Math.random(),
+                        file: file,
+                        status: 'uploading',
+                        progress: 0
+                    };
+                    validFiles.push(fileItem);
+                } else {
+                    errors.push(`${file.name}: ${validation.error}`);
+                }
+            });
+
+            if (errors.length > 0) {
+                alert('Upload errors:\n' + errors.join('\n'));
+            }
+
+            if (validFiles.length > 0) {
+                uploadedFiles.push(...validFiles);
+                renderFiles();
+                
+                // Simulate upload for each file
+                validFiles.forEach(fileItem => {
+                    simulateUpload(fileItem.id);
+                });
+            }
+        }
+
+        function simulateUpload(fileId) {
+            const interval = setInterval(() => {
+                const fileItem = uploadedFiles.find(f => f.id === fileId);
+                if (!fileItem) {
+                    clearInterval(interval);
+                    return;
+                }
+
+                fileItem.progress += 10;
+                
+                if (fileItem.progress >= 100) {
+                    clearInterval(interval);
+                    fileItem.status = 'processing';
+                    renderFiles();
+                    
+                    // Simulate processing
+                    setTimeout(() => {
+                        fileItem.status = 'complete';
+                        renderFiles();
+                    }, 2000);
+                } else {
+                    renderFiles();
+                }
+            }, 100);
+        }
+
+        function removeFile(fileId) {
+            uploadedFiles = uploadedFiles.filter(f => f.id !== fileId);
+            renderFiles();
+        }
+
+        function renderFiles() {
+            if (uploadedFiles.length === 0) {
+                fileList.style.display = 'none';
+                return;
+            }
+
+            fileList.style.display = 'block';
+            filesContainer.innerHTML = uploadedFiles.map(fileItem => {
+                const type = supportedTypes[fileItem.file.type] || { icon: '📄' };
+                
+                let statusHtml = '';
+                if (fileItem.status === 'uploading') {
+                    statusHtml = `
+                        <div class="status uploading">Uploading... ${fileItem.progress}%</div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${fileItem.progress}%"></div>
+                        </div>
+                    `;
+                } else if (fileItem.status === 'processing') {
+                    statusHtml = '<div class="status processing">Processing content...</div>';
+                } else if (fileItem.status === 'complete') {
+                    statusHtml = '<div class="status complete">Ready for use</div>';
+                } else if (fileItem.status === 'error') {
+                    statusHtml = '<div class="status error">Upload failed</div>';
+                }
+
+                return `
+                    <div class="file-item">
+                        <div class="file-icon">${type.icon}</div>
+                        <div class="file-info">
+                            <div class="file-name">${fileItem.file.name}</div>
+                            <div class="file-size">${formatFileSize(fileItem.file.size)}</div>
+                            ${statusHtml}
+                        </div>
+                        <button class="remove-btn" onclick="removeFile(${fileItem.id})">×</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Drag and drop handlers
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('drag-active');
+        });
+
+        uploadZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-active');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('drag-active');
+            addFiles(e.dataTransfer.files);
+        });
+
+        // Click to browse
+        uploadZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            addFiles(e.target.files);
+            e.target.value = ''; // Reset input
+        });
+
+        // Make removeFile available globally
+        window.removeFile = removeFile;
+    </script>
+</body>
+</html>

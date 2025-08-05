@@ -1,704 +1,351 @@
-import React, { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Slider } from "@/components/ui/slider";
-import { Progress } from "@/components/ui/progress";
+import React, { useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
 import { 
   ArrowLeft, 
   ArrowRight, 
-  Check, 
-  Sparkles,
-  Database,
-  Settings,
-  MessageSquare,
-  Headphones,
-  Video,
-  Globe,
-  TestTube,
-  Rocket
-} from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+  Save, 
+  X,
+  CheckCircle,
+  Circle,
+  AlertCircle
+} from 'lucide-react';
 
-interface AgentTemplate {
-  id: string;
-  name: string;
-  category: string;
-  description: string;
-  icon: string;
-  personality: {
-    tone: string;
-    style: string;
-    language: string;
-    creativity_level: number;
-  };
-  features: {
-    voice_enabled: boolean;
-    video_enabled: boolean;
-    multimodal: boolean;
-    tools: string[];
-    integrations: string[];
-  };
-  default_config: {
-    knowledge_bases: string[];
-    channels: string[];
-    workflows: string[];
-    ai_provider: string;
-  };
+import { useToast } from '@/hooks/use-toast';
+import { AgentCreationProvider, useAgentCreation } from './AgentCreationContext';
+import { AgentTemplate } from '@/lib/agent-service';
+
+// Step components (will be implemented in subsequent tasks)
+import TemplateSelectionStep from './steps/TemplateSelectionStep';
+import KnowledgeBaseStep from './steps/KnowledgeBaseStep';
+import PersonalityStep from './steps/PersonalityStep';
+import CapabilitiesStep from './steps/CapabilitiesStep';
+import ChannelsStep from './steps/ChannelsStep';
+import TestingStep from './steps/TestingStep';
+import DeploymentStep from './steps/DeploymentStep';
+
+interface AgentCreationWizardProps {
+  template?: AgentTemplate;
+  onComplete?: (agentId: string) => void;
+  onCancel?: () => void;
 }
 
-interface WizardStep {
-  id: string;
-  title: string;
-  description: string;
-  icon: any;
-  completed: boolean;
-}
-
-const steps: WizardStep[] = [
-  {
-    id: 'template',
-    title: 'Template Selection',
-    description: 'Choose your starting template',
-    icon: Sparkles,
-    completed: false
-  },
-  {
-    id: 'knowledge',
-    title: 'Knowledge Base',
-    description: 'Add your content sources',
-    icon: Database,
-    completed: false
-  },
-  {
-    id: 'personality',
-    title: 'Personality',
-    description: 'Configure agent behavior',
-    icon: MessageSquare,
-    completed: false
-  },
-  {
-    id: 'capabilities',
-    title: 'Capabilities',
-    description: 'Enable features and tools',
-    icon: Settings,
-    completed: false
-  },
-  {
-    id: 'channels',
-    title: 'Channels',
-    description: 'Choose deployment channels',
-    icon: Globe,
-    completed: false
-  },
-  {
-    id: 'testing',
-    title: 'Testing',
-    description: 'Test your agent',
-    icon: TestTube,
-    completed: false
-  },
-  {
-    id: 'deployment',
-    title: 'Deployment',
-    description: 'Launch your agent',
-    icon: Rocket,
-    completed: false
-  }
-];
-
-export default function AgentCreationWizard() {
+function AgentCreationWizardContent({ template, onComplete, onCancel }: AgentCreationWizardProps) {
   const navigate = useNavigate();
-  const { templateId } = useParams();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [template, setTemplate] = useState<AgentTemplate | null>(null);
-  const [agentConfig, setAgentConfig] = useState({
-    name: '',
-    description: '',
-    personality: {
-      tone: 'professional',
-      style: 'balanced',
-      language: 'en',
-      creativity_level: 50
-    },
-    knowledge_bases: [] as string[],
-    capabilities: {
-      voice_enabled: false,
-      video_enabled: false,
-      multimodal: true,
-      tools: [] as string[],
-      integrations: [] as string[]
-    },
-    channels: [] as string[],
-    ai_provider: 'openai'
-  });
+  const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  
+  const {
+    state,
+    steps,
+    nextStep,
+    previousStep,
+    goToStep,
+    setTemplate,
+    saveDraft,
+    resetWizard,
+    validateStep
+  } = useAgentCreation();
 
+  // Initialize with template if provided
   useEffect(() => {
-    if (templateId && templateId !== 'custom') {
-      loadTemplate(templateId);
+    if (template) {
+      setTemplate(template);
     }
-  }, [templateId]);
+  }, [template, setTemplate]);
 
-  const loadTemplate = async (id: string) => {
-    // Mock template loading - replace with actual API call
-    const mockTemplate: AgentTemplate = {
-      id: '1',
-      name: 'Sales Agent',
-      category: 'sales',
-      description: 'Intelligent sales assistant that qualifies leads and manages CRM data',
-      icon: '💼',
-      personality: {
-        tone: 'professional',
-        style: 'persuasive',
-        language: 'en',
-        creativity_level: 60
-      },
-      features: {
-        voice_enabled: true,
-        video_enabled: true,
-        multimodal: true,
-        tools: ['web_search', 'calculator', 'calendar'],
-        integrations: ['hubspot', 'salesforce', 'email']
-      },
-      default_config: {
-        knowledge_bases: ['sales_materials'],
-        channels: ['web_chat', 'whatsapp', 'email'],
-        workflows: ['lead_qualification'],
-        ai_provider: 'openai'
-      }
-    };
+  // Load draft if specified in URL
+  useEffect(() => {
+    const draftId = searchParams.get('draft');
+    if (draftId) {
+      // TODO: Load draft from database
+      console.log('Loading draft:', draftId);
+    }
+  }, [searchParams]);
 
-    setTemplate(mockTemplate);
-    setAgentConfig(prev => ({
-      ...prev,
-      name: mockTemplate.name,
-      description: mockTemplate.description,
-      personality: mockTemplate.personality,
-      capabilities: mockTemplate.features,
-      channels: mockTemplate.default_config.channels,
-      ai_provider: mockTemplate.default_config.ai_provider
-    }));
+  // Auto-save draft when state changes
+  useEffect(() => {
+    if (state.hasUnsavedChanges) {
+      const timeoutId = setTimeout(() => {
+        saveDraft();
+      }, 2000); // Save after 2 seconds of inactivity
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [state, saveDraft]);
+
+  const handleNext = () => {
+    const currentStepId = steps[state.currentStep].id;
+    const isValid = validateStep(currentStepId);
+    
+    if (!isValid) {
+      toast({
+        title: "Please complete this step",
+        description: "Fill in all required fields before proceeding.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    nextStep();
   };
 
-  const nextStep = () => {
-    if (currentStep < steps.length - 1) {
-      setCurrentStep(currentStep + 1);
-    }
+  const handlePrevious = () => {
+    previousStep();
   };
 
-  const prevStep = () => {
-    if (currentStep > 0) {
-      setCurrentStep(currentStep - 1);
+  const handleStepClick = (stepIndex: number) => {
+    // Only allow navigation to completed steps or the next step
+    if (stepIndex <= state.currentStep + 1) {
+      goToStep(stepIndex);
     }
   };
 
-  const canProceed = () => {
-    switch (currentStep) {
-      case 0: return template !== null;
-      case 1: return agentConfig.knowledge_bases.length > 0;
-      case 2: return agentConfig.name.trim() !== '';
-      case 3: return true;
-      case 4: return agentConfig.channels.length > 0;
-      case 5: return true;
-      case 6: return true;
-      default: return false;
+  const handleCancel = () => {
+    if (state.hasUnsavedChanges) {
+      const confirmLeave = window.confirm(
+        'You have unsaved changes. Are you sure you want to leave?'
+      );
+      if (!confirmLeave) return;
     }
+    
+    if (onCancel) {
+      onCancel();
+    } else {
+      navigate('/dashboard/agents');
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    await saveDraft();
+    toast({
+      title: "Draft Saved",
+      description: "Your progress has been saved.",
+    });
   };
 
   const renderStepContent = () => {
-    switch (currentStep) {
-      case 0:
-        return <TemplateSelectionStep template={template} />;
-      case 1:
-        return <KnowledgeBaseStep config={agentConfig} setConfig={setAgentConfig} />;
-      case 2:
-        return <PersonalityStep config={agentConfig} setConfig={setAgentConfig} />;
-      case 3:
-        return <CapabilitiesStep config={agentConfig} setConfig={setAgentConfig} />;
-      case 4:
-        return <ChannelsStep config={agentConfig} setConfig={setAgentConfig} />;
-      case 5:
-        return <TestingStep config={agentConfig} />;
-      case 6:
-        return <DeploymentStep config={agentConfig} />;
+    const currentStepId = steps[state.currentStep].id;
+    
+    switch (currentStepId) {
+      case 'template':
+        return <TemplateSelectionStep />;
+      case 'knowledge':
+        return <KnowledgeBaseStep />;
+      case 'personality':
+        return <PersonalityStep />;
+      case 'capabilities':
+        return <CapabilitiesStep />;
+      case 'channels':
+        return <ChannelsStep />;
+      case 'testing':
+        return <TestingStep />;
+      case 'deployment':
+        return <DeploymentStep onComplete={onComplete} />;
       default:
-        return null;
+        return <div>Step not found</div>;
     }
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Progress Header */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Button variant="ghost" onClick={() => navigate('/dashboard/agents')}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Agents
-          </Button>
-          <Badge variant="secondary">
-            Step {currentStep + 1} of {steps.length}
-          </Badge>
-        </div>
-        
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span>Progress</span>
-            <span>{Math.round(((currentStep + 1) / steps.length) * 100)}%</span>
-          </div>
-          <Progress value={((currentStep + 1) / steps.length) * 100} />
-        </div>
+  const currentStep = steps[state.currentStep];
+  const isFirstStep = state.currentStep === 0;
+  const isLastStep = state.currentStep === steps.length - 1;
+  const canProceed = validateStep(currentStep.id);
 
-        {/* Step Navigation */}
-        <div className="flex items-center justify-between">
-          {steps.map((step, index) => {
-            const IconComponent = step.icon;
-            const isActive = index === currentStep;
-            const isCompleted = index < currentStep;
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b sticky top-0 z-10">
+        <div className="max-w-6xl mx-auto px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button variant="ghost" size="sm" onClick={handleCancel}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Agents
+              </Button>
+              <div className="h-6 w-px bg-gray-300" />
+              <div>
+                <h1 className="text-xl font-semibold">
+                  {state.agentName || 'Create New Agent'}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Step {state.currentStep + 1} of {steps.length}: {currentStep.title}
+                </p>
+              </div>
+            </div>
             
-            return (
-              <div key={step.id} className="flex flex-col items-center space-y-2">
-                <div className={`
-                  w-10 h-10 rounded-full flex items-center justify-center border-2 transition-colors
-                  ${isActive ? 'border-primary bg-primary text-primary-foreground' : 
-                    isCompleted ? 'border-green-500 bg-green-500 text-white' : 
-                    'border-muted-foreground bg-background'}
-                `}>
-                  {isCompleted ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <IconComponent className="h-4 w-4" />
-                  )}
-                </div>
-                <div className="text-center">
-                  <div className={`text-xs font-medium ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {step.title}
+            <div className="flex items-center space-x-3">
+              {state.lastSaved && (
+                <span className="text-xs text-muted-foreground">
+                  Saved {state.lastSaved.toLocaleTimeString()}
+                </span>
+              )}
+              {state.hasUnsavedChanges && (
+                <Badge variant="outline" className="text-orange-600 border-orange-200">
+                  Unsaved changes
+                </Badge>
+              )}
+              <Button variant="outline" size="sm" onClick={handleSaveDraft}>
+                <Save className="h-4 w-4 mr-2" />
+                Save Draft
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleCancel}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Progress Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="sticky top-24">
+              <CardContent className="p-6">
+                <div className="space-y-6">
+                  {/* Overall Progress */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Progress</span>
+                      <span className="text-sm text-muted-foreground">{state.progress}%</span>
+                    </div>
+                    <Progress value={state.progress} className="h-2" />
+                  </div>
+
+                  {/* Step List */}
+                  <div className="space-y-3">
+                    {steps.map((step, index) => {
+                      const isCurrent = index === state.currentStep;
+                      const isCompleted = step.isComplete;
+                      const isAccessible = index <= state.currentStep + 1;
+                      const hasErrors = state.errors[step.id]?.length > 0;
+
+                      return (
+                        <div
+                          key={step.id}
+                          className={`flex items-start space-x-3 p-2 rounded-lg cursor-pointer transition-colors ${
+                            isCurrent 
+                              ? 'bg-primary/10 border border-primary/20' 
+                              : isAccessible 
+                                ? 'hover:bg-gray-50' 
+                                : 'opacity-50 cursor-not-allowed'
+                          }`}
+                          onClick={() => isAccessible && handleStepClick(index)}
+                        >
+                          <div className="flex-shrink-0 mt-0.5">
+                            {isCompleted ? (
+                              <CheckCircle className="h-5 w-5 text-green-500" />
+                            ) : hasErrors ? (
+                              <AlertCircle className="h-5 w-5 text-red-500" />
+                            ) : isCurrent ? (
+                              <Circle className="h-5 w-5 text-primary fill-primary" />
+                            ) : (
+                              <Circle className="h-5 w-5 text-gray-300" />
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium ${
+                              isCurrent ? 'text-primary' : isCompleted ? 'text-green-700' : 'text-gray-700'
+                            }`}>
+                              {step.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {step.description}
+                            </p>
+                            {hasErrors && (
+                              <p className="text-xs text-red-500 mt-1">
+                                {state.errors[step.id].length} error{state.errors[step.id].length !== 1 ? 's' : ''}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Step Content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            {React.createElement(steps[currentStep].icon, { className: "h-5 w-5" })}
-            <span>{steps[currentStep].title}</span>
-          </CardTitle>
-          <CardDescription>{steps[currentStep].description}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {renderStepContent()}
-        </CardContent>
-      </Card>
-
-      {/* Navigation */}
-      <div className="flex justify-between">
-        <Button 
-          variant="outline" 
-          onClick={prevStep} 
-          disabled={currentStep === 0}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Previous
-        </Button>
-        
-        {currentStep === steps.length - 1 ? (
-          <Button onClick={() => navigate('/dashboard/agents')}>
-            <Check className="h-4 w-4 mr-2" />
-            Complete Setup
-          </Button>
-        ) : (
-          <Button 
-            onClick={nextStep} 
-            disabled={!canProceed()}
-          >
-            Next
-            <ArrowRight className="h-4 w-4 ml-2" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// Step Components
-function TemplateSelectionStep({ template }: { template: AgentTemplate | null }) {
-  if (!template) {
-    return (
-      <div className="text-center py-8">
-        <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No Template Selected</h3>
-        <p className="text-muted-foreground">
-          Please select a template from the gallery to continue.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <div className="text-4xl mb-4">{template.icon}</div>
-        <h3 className="text-xl font-semibold mb-2">{template.name}</h3>
-        <p className="text-muted-foreground">{template.description}</p>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <h4 className="font-medium mb-2">Features</h4>
-          <div className="space-y-2">
-            {template.features.voice_enabled && (
-              <div className="flex items-center space-x-2">
-                <Headphones className="h-4 w-4" />
-                <span className="text-sm">Voice Enabled</span>
-              </div>
-            )}
-            {template.features.video_enabled && (
-              <div className="flex items-center space-x-2">
-                <Video className="h-4 w-4" />
-                <span className="text-sm">Video Calls</span>
-              </div>
-            )}
-            {template.features.multimodal && (
-              <div className="flex items-center space-x-2">
-                <MessageSquare className="h-4 w-4" />
-                <span className="text-sm">Multimodal</span>
-              </div>
-            )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
-        
-        <div>
-          <h4 className="font-medium mb-2">Integrations</h4>
-          <div className="flex flex-wrap gap-1">
-            {template.features.integrations.map((integration) => (
-              <Badge key={integration} variant="secondary" className="text-xs">
-                {integration}
-              </Badge>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-function KnowledgeBaseStep({ config, setConfig }: any) {
-  const mockKnowledgeBases = [
-    { id: '1', name: 'Product Documentation', description: 'Complete product docs' },
-    { id: '2', name: 'Company FAQ', description: 'Frequently asked questions' },
-    { id: '3', name: 'Sales Materials', description: 'Sales presentations and materials' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Select Knowledge Bases</h3>
-        <p className="text-muted-foreground mb-4">
-          Choose the knowledge bases your agent should have access to.
-        </p>
-      </div>
-      
-      <div className="space-y-3">
-        {mockKnowledgeBases.map((kb) => (
-          <div key={kb.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-            <Checkbox
-              checked={config.knowledge_bases.includes(kb.id)}
-              onCheckedChange={(checked) => {
-                if (checked) {
-                  setConfig((prev: any) => ({
-                    ...prev,
-                    knowledge_bases: [...prev.knowledge_bases, kb.id]
-                  }));
-                } else {
-                  setConfig((prev: any) => ({
-                    ...prev,
-                    knowledge_bases: prev.knowledge_bases.filter((id: string) => id !== kb.id)
-                  }));
-                }
-              }}
-            />
-            <div>
-              <div className="font-medium">{kb.name}</div>
-              <div className="text-sm text-muted-foreground">{kb.description}</div>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <Button variant="outline" className="w-full">
-        <Database className="h-4 w-4 mr-2" />
-        Create New Knowledge Base
-      </Button>
-    </div>
-  );
-}
-
-function PersonalityStep({ config, setConfig }: any) {
-  return (
-    <div className="space-y-6">
-      <div>
-        <label className="text-sm font-medium">Agent Name</label>
-        <Input
-          value={config.name}
-          onChange={(e) => setConfig((prev: any) => ({ ...prev, name: e.target.value }))}
-          placeholder="Enter agent name"
-        />
-      </div>
-      
-      <div>
-        <label className="text-sm font-medium">Description</label>
-        <Textarea
-          value={config.description}
-          onChange={(e) => setConfig((prev: any) => ({ ...prev, description: e.target.value }))}
-          placeholder="Describe what your agent does"
-        />
-      </div>
-      
-      <div>
-        <label className="text-sm font-medium mb-2 block">Tone</label>
-        <Select 
-          value={config.personality.tone} 
-          onValueChange={(value) => setConfig((prev: any) => ({
-            ...prev,
-            personality: { ...prev.personality, tone: value }
-          }))}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="professional">Professional</SelectItem>
-            <SelectItem value="friendly">Friendly</SelectItem>
-            <SelectItem value="casual">Casual</SelectItem>
-            <SelectItem value="formal">Formal</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div>
-        <label className="text-sm font-medium mb-2 block">
-          Creativity Level: {config.personality.creativity_level}%
-        </label>
-        <Slider
-          value={[config.personality.creativity_level]}
-          onValueChange={([value]) => setConfig((prev: any) => ({
-            ...prev,
-            personality: { ...prev.personality, creativity_level: value }
-          }))}
-          max={100}
-          step={10}
-        />
-      </div>
-    </div>
-  );
-}
-
-function CapabilitiesStep({ config, setConfig }: any) {
-  const availableTools = [
-    { id: 'web_search', name: 'Web Search', description: 'Search the internet for information' },
-    { id: 'calculator', name: 'Calculator', description: 'Perform mathematical calculations' },
-    { id: 'datetime', name: 'Date & Time', description: 'Handle date and time operations' },
-    { id: 'weather', name: 'Weather', description: 'Get weather information' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Voice & Video</h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium">Voice Responses</div>
-              <div className="text-sm text-muted-foreground">Enable text-to-speech</div>
-            </div>
-            <Checkbox
-              checked={config.capabilities.voice_enabled}
-              onCheckedChange={(checked) => setConfig((prev: any) => ({
-                ...prev,
-                capabilities: { ...prev.capabilities, voice_enabled: checked }
-              }))}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="font-medium">Video Calls</div>
-              <div className="text-sm text-muted-foreground">Enable video conversations</div>
-            </div>
-            <Checkbox
-              checked={config.capabilities.video_enabled}
-              onCheckedChange={(checked) => setConfig((prev: any) => ({
-                ...prev,
-                capabilities: { ...prev.capabilities, video_enabled: checked }
-              }))}
-            />
-          </div>
-        </div>
-      </div>
-      
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Available Tools</h3>
-        <div className="space-y-3">
-          {availableTools.map((tool) => (
-            <div key={tool.id} className="flex items-center space-x-3 p-3 border rounded-lg">
-              <Checkbox
-                checked={config.capabilities.tools.includes(tool.id)}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    setConfig((prev: any) => ({
-                      ...prev,
-                      capabilities: {
-                        ...prev.capabilities,
-                        tools: [...prev.capabilities.tools, tool.id]
-                      }
-                    }));
-                  } else {
-                    setConfig((prev: any) => ({
-                      ...prev,
-                      capabilities: {
-                        ...prev.capabilities,
-                        tools: prev.capabilities.tools.filter((id: string) => id !== tool.id)
-                      }
-                    }));
-                  }
-                }}
-              />
-              <div>
-                <div className="font-medium">{tool.name}</div>
-                <div className="text-sm text-muted-foreground">{tool.description}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChannelsStep({ config, setConfig }: any) {
-  const availableChannels = [
-    { id: 'web_chat', name: 'Web Chat', description: 'Website chat widget', icon: '💬' },
-    { id: 'whatsapp', name: 'WhatsApp', description: 'WhatsApp Business API', icon: '📱' },
-    { id: 'slack', name: 'Slack', description: 'Slack workspace integration', icon: '💬' },
-    { id: 'email', name: 'Email', description: 'Email-to-chat conversion', icon: '📧' }
-  ];
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Deployment Channels</h3>
-        <p className="text-muted-foreground mb-4">
-          Select where you want to deploy your agent.
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-2 gap-4">
-        {availableChannels.map((channel) => (
-          <Card 
-            key={channel.id} 
-            className={`cursor-pointer transition-colors ${
-              config.channels.includes(channel.id) ? 'ring-2 ring-primary' : 'hover:bg-muted/50'
-            }`}
-            onClick={() => {
-              if (config.channels.includes(channel.id)) {
-                setConfig((prev: any) => ({
-                  ...prev,
-                  channels: prev.channels.filter((id: string) => id !== channel.id)
-                }));
-              } else {
-                setConfig((prev: any) => ({
-                  ...prev,
-                  channels: [...prev.channels, channel.id]
-                }));
-              }
-            }}
-          >
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-3">
-                <span className="text-2xl">{channel.icon}</span>
-                <div>
-                  <div className="font-medium">{channel.name}</div>
-                  <div className="text-sm text-muted-foreground">{channel.description}</div>
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Card>
+              <CardContent className="p-8">
+                {/* Step Header */}
+                <div className="mb-8">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Badge variant="outline">
+                      Step {state.currentStep + 1} of {steps.length}
+                    </Badge>
+                    {currentStep.isOptional && (
+                      <Badge variant="secondary">Optional</Badge>
+                    )}
+                  </div>
+                  <h2 className="text-2xl font-bold mb-2">{currentStep.title}</h2>
+                  <p className="text-muted-foreground">{currentStep.description}</p>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+                {/* Step Content */}
+                <div className="mb-8">
+                  {renderStepContent()}
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between pt-6 border-t">
+                  <Button
+                    variant="outline"
+                    onClick={handlePrevious}
+                    disabled={isFirstStep}
+                  >
+                    <ArrowLeft className="h-4 w-4 mr-2" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center space-x-3">
+                    {!canProceed && !currentStep.isOptional && (
+                      <span className="text-sm text-muted-foreground">
+                        Complete required fields to continue
+                      </span>
+                    )}
+                    
+                    {isLastStep ? (
+                      <Button
+                        onClick={handleNext}
+                        disabled={!canProceed}
+                        className="bg-green-600 hover:bg-green-700"
+                      >
+                        Deploy Agent
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={handleNext}
+                        disabled={!canProceed && !currentStep.isOptional}
+                      >
+                        Next
+                        <ArrowRight className="h-4 w-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function TestingStep({ config }: any) {
+// Main component with provider
+export default function AgentCreationWizard(props: AgentCreationWizardProps) {
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <TestTube className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Test Your Agent</h3>
-        <p className="text-muted-foreground">
-          Try a conversation with your agent to make sure it works as expected.
-        </p>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Agent Preview</CardTitle>
-          <CardDescription>
-            {config.name} • {config.personality.tone} tone
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-muted/50 rounded-lg p-4 min-h-[200px] flex items-center justify-center">
-            <p className="text-muted-foreground">Chat interface would appear here</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-function DeploymentStep({ config }: any) {
-  return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <Rocket className="h-12 w-12 mx-auto text-primary mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Ready to Deploy!</h3>
-        <p className="text-muted-foreground">
-          Your agent is configured and ready to go live.
-        </p>
-      </div>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Deployment Summary</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Agent Name:</span>
-            <span className="font-medium">{config.name}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Knowledge Bases:</span>
-            <span className="font-medium">{config.knowledge_bases.length}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Channels:</span>
-            <span className="font-medium">{config.channels.length}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Tools:</span>
-            <span className="font-medium">{config.capabilities.tools.length}</span>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <AgentCreationProvider>
+      <AgentCreationWizardContent {...props} />
+    </AgentCreationProvider>
   );
 }
