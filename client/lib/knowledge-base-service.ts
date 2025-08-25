@@ -115,10 +115,10 @@ export async function fetchKnowledgeBaseStats(userId: string): Promise<Knowledge
   }
 
   try {
-    // Fetch knowledge bases count and total size
+    // Fetch knowledge bases count - use basic fields first
     const { data: knowledgeBases, error: kbError } = await supabase
       .from('knowledge_bases')
-      .select('id, documents_count, total_size_bytes')
+      .select('id, documents_count, created_at')
       .eq('user_id', userId);
 
     if (kbError) {
@@ -176,7 +176,6 @@ export async function fetchKnowledgeBases(userId: string): Promise<KnowledgeBase
         description,
         status,
         documents_count,
-        total_size_bytes,
         created_at,
         updated_at,
         user_id
@@ -192,18 +191,31 @@ export async function fetchKnowledgeBases(userId: string): Promise<KnowledgeBase
       return [];
     }
 
-    // Map knowledge bases with correct field names
-    return knowledgeBases.map(kb => ({
-      id: kb.id,
-      name: kb.name,
-      description: kb.description || '',
-      status: kb.status || 'active',
-      documentCount: kb.documents_count || 0,
-      totalSize: kb.total_size_bytes || 0,
-      lastUpdated: kb.updated_at,
-      createdAt: kb.created_at,
-      userId: kb.user_id,
-    }));
+    // Calculate total size from documents for each knowledge base
+    const kbsWithSize = await Promise.all(
+      knowledgeBases.map(async (kb) => {
+        const { data: docs } = await supabase
+          .from('documents')
+          .select('size_bytes')
+          .eq('knowledge_base_id', kb.id);
+        
+        const totalSize = docs?.reduce((sum, doc) => sum + (doc.size_bytes || 0), 0) || 0;
+        
+        return {
+          id: kb.id,
+          name: kb.name,
+          description: kb.description || '',
+          status: (kb.status as 'active' | 'processing' | 'error') || 'active',
+          documentCount: kb.documents_count || 0,
+          totalSize,
+          lastUpdated: kb.updated_at,
+          createdAt: kb.created_at,
+          userId: kb.user_id,
+        };
+      })
+    );
+
+    return kbsWithSize;
   } catch (error) {
     if (error instanceof KnowledgeBaseServiceError) {
       throw error;
@@ -254,8 +266,7 @@ export async function fetchRecentDocuments(userId: string, limit: number = 10): 
         name,
         size_bytes,
         status,
-        created_at,
-        processed_at
+        created_at
       `)
       .in('knowledge_base_id', knowledgeBaseIds)
       .order('created_at', { ascending: false })
@@ -272,10 +283,10 @@ export async function fetchRecentDocuments(userId: string, limit: number = 10): 
       knowledgeBaseId: doc.knowledge_base_id,
       filename: doc.name,
       fileSize: doc.size_bytes || 0,
-      status: doc.status || 'processing',
+      status: (doc.status as 'processing' | 'error' | 'processed') || 'processing',
       chunkCount: 0, // We don't have chunk count in this schema
       createdAt: doc.created_at,
-      updatedAt: doc.processed_at || doc.created_at,
+      updatedAt: doc.created_at,
       knowledgeBaseName: kbNameMap[doc.knowledge_base_id],
     }));
   } catch (error) {
@@ -439,10 +450,12 @@ export class KnowledgeBaseRealTimeUpdater {
   private lastUpdateTime = 0;
   private config: RealTimeUpdateConfig;
   private userId: string;
+  private knowledgeBaseIds?: string[];
 
-  constructor(userId: string, config: RealTimeUpdateConfig) {
+  constructor(userId: string, config: RealTimeUpdateConfig, knowledgeBaseIds?: string[]) {
     this.userId = userId;
     this.config = config;
+    this.knowledgeBaseIds = knowledgeBaseIds;
   }
 
   /**
@@ -532,10 +545,11 @@ export class KnowledgeBaseRealTimeUpdater {
 
   private async performUpdate(): Promise<void> {
     try {
-      const data = await fetchKnowledgeBaseData(this.userId);
+      // Use the new real-time endpoint for better performance
+      const response = await this.fetchRealTimeStatus();
       this.lastUpdateTime = Date.now();
       this.retryCount = 0;
-      this.config.onUpdate?.(data);
+      this.config.onUpdate?.(response);
     } catch (error) {
       const serviceError = error instanceof KnowledgeBaseServiceError 
         ? error 
@@ -543,6 +557,37 @@ export class KnowledgeBaseRealTimeUpdater {
       
       this.handleUpdateError(serviceError);
     }
+  }
+
+  private async fetchRealTimeStatus(): Promise<any> {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new KnowledgeBaseServiceError({
+        type: 'permission',
+        message: 'Authentication required for real-time updates',
+        retryable: false,
+      });
+    }
+
+    const params = new URLSearchParams({
+      userId: this.userId,
+    });
+
+    if (this.knowledgeBaseIds && this.knowledgeBaseIds.length > 0) {
+      params.append('knowledgeBaseIds', this.knowledgeBaseIds.join(','));
+    }
+
+    const response = await fetch(`/.netlify/functions/knowledge-base-status?${params}`, {
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    return await response.json();
   }
 
   private handleUpdateError(error: KnowledgeBaseServiceError): void {
@@ -561,9 +606,10 @@ export class KnowledgeBaseRealTimeUpdater {
  */
 export function createRealTimeUpdater(
   userId: string, 
-  config: RealTimeUpdateConfig
+  config: RealTimeUpdateConfig,
+  knowledgeBaseIds?: string[]
 ): KnowledgeBaseRealTimeUpdater {
-  return new KnowledgeBaseRealTimeUpdater(userId, config);
+  return new KnowledgeBaseRealTimeUpdater(userId, config, knowledgeBaseIds);
 }
 
 /**

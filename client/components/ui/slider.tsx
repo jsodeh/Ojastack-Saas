@@ -5,11 +5,12 @@ interface SliderProps {
   value: number[];
   onValueChange: (value: number[]) => void;
   max: number;
+  min?: number;
   step: number;
   className?: string;
 }
 
-export function Slider({ value, onValueChange, max, step, className }: SliderProps) {
+export function Slider({ value, onValueChange, max, min = 0, step, className }: SliderProps) {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     onValueChange([parseInt(e.target.value)]);
   };
@@ -17,7 +18,7 @@ export function Slider({ value, onValueChange, max, step, className }: SliderPro
   return (
     <input
       type="range"
-      min={0}
+      min={min}
       max={max}
       step={step}
       value={value[0]}

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { fetchAgentTemplate, type AgentTemplate } from '@/lib/agent-service';
 import AgentCreationWizard from '@/components/agent-creation/AgentCreationWizard';
 
 export default function CreateAgentPage() {
   const [searchParams] = useSearchParams();
+  const { templateId: urlTemplateId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -13,11 +14,12 @@ export default function CreateAgentPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const templateId = searchParams.get('template');
+    // Check for template ID in URL params first, then query params
+    const templateId = urlTemplateId || searchParams.get('template');
     if (templateId) {
       loadTemplate(templateId);
     }
-  }, [searchParams]);
+  }, [searchParams, urlTemplateId]);
 
   const loadTemplate = async (templateId: string) => {
     try {

@@ -23,7 +23,9 @@ import {
   getCapabilityLabels 
 } from '@/lib/agent-service';
 
-export default function TemplateSelectionStep() {
+import { StepProps } from '../AgentCreationWizard';
+
+export default function TemplateSelectionStep({ onNext, onPrevious }: StepProps) {
   const { state, setTemplate, setAgentInfo } = useAgentCreation();
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
   const [loading, setLoading] = useState(true);

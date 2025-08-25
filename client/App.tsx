@@ -26,6 +26,7 @@ import Privacy from "./pages/Privacy";
 import DashboardOverview from "./pages/dashboard/Overview";
 import InteractiveDemo from "./pages/dashboard/InteractiveDemo";
 import AgentsPage from "./pages/dashboard/Agents";
+import CreateAgentPage from "./pages/dashboard/CreateAgent";
 import AgentDetail from "./pages/dashboard/AgentDetail";
 import TestAgent from "./pages/dashboard/TestAgent";
 import ConversationsPage from "./pages/dashboard/Conversations";
@@ -42,6 +43,9 @@ import WorkflowTest from "./pages/dashboard/WorkflowTest";
 import AgentCreationWizard from "./components/agent-creation/AgentCreationWizard";
 import KnowledgeBaseManager from "./components/knowledge-base/KnowledgeBaseManager";
 import DashboardLayout from "./components/dashboard/DashboardLayout";
+import Analytics from "./pages/dashboard/Analytics";
+import IntegrationsPage from "./pages/dashboard/Integrations";
+import Onboarding from "./pages/Onboarding";
 
 const queryClient = new QueryClient();
 
@@ -128,6 +132,16 @@ const App = () => (
               element={<ConfirmEmail />}
             />
 
+            {/* Onboarding Route */}
+            <Route
+              path="/onboarding"
+              element={
+                <ProtectedRoute>
+                  <Onboarding />
+                </ProtectedRoute>
+              }
+            />
+            
             {/* Protected dashboard routes */}
             <Route
               path="/dashboard"
@@ -195,6 +209,26 @@ const App = () => (
                 <ProtectedRoute>
                   <DashboardLayout>
                     <APIReference />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/analytics"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <Analytics />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/dashboard/integrations"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <IntegrationsPage />
                   </DashboardLayout>
                 </ProtectedRoute>
               }
@@ -286,11 +320,21 @@ const App = () => (
               }
             />
             <Route
+              path="/dashboard/agents/create"
+              element={
+                <ProtectedRoute>
+                  <DashboardLayout>
+                    <CreateAgentPage />
+                  </DashboardLayout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/dashboard/agents/create/:templateId"
               element={
                 <ProtectedRoute>
                   <DashboardLayout>
-                    <AgentCreationWizard />
+                    <CreateAgentPage />
                   </DashboardLayout>
                 </ProtectedRoute>
               }

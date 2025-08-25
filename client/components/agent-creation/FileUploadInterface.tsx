@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { 
   Upload, 
@@ -9,17 +9,25 @@ import {
   X,
   AlertCircle,
   CheckCircle2,
-  Loader2
+  Loader2,
+  Play,
+  Pause
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { 
+  chunkedUploadService, 
+  ChunkUploadProgress,
+  ChunkUploadOptions 
+} from '@/lib/chunked-upload-service';
+import FileUploadProgress from './FileUploadProgress';
 
 export interface FileUploadItem {
   id: string;
   file: File;
-  status: 'uploading' | 'processing' | 'complete' | 'error';
+  status: 'uploading' | 'processing' | 'complete' | 'error' | 'paused';
   progress: number;
   error?: string;
 }
@@ -109,8 +117,13 @@ interface FileUploadInterfaceProps {
   files: FileUploadItem[];
   onFilesAdded: (files: File[]) => void;
   onFileRemove: (fileId: string) => void;
+  onUploadComplete?: (fileId: string, result: any) => void;
+  onUploadError?: (fileId: string, error: Error) => void;
   maxFiles?: number;
   disabled?: boolean;
+  knowledgeBaseId?: string;
+  enableChunkedUpload?: boolean;
+  chunkSize?: number;
 }
 
 function getFileIcon(file: File): React.ComponentType<{ className?: string }> {
@@ -153,13 +166,71 @@ function validateFile(file: File): { valid: boolean; error?: string } {
 export default function FileUploadInterface({ 
   files, 
   onFilesAdded, 
-  onFileRemove, 
+  onFileRemove,
+  onUploadComplete,
+  onUploadError,
   maxFiles = 10,
-  disabled = false 
+  disabled = false,
+  knowledgeBaseId = 'default',
+  enableChunkedUpload = true,
+  chunkSize = 1024 * 1024 // 1MB default
 }: FileUploadInterfaceProps) {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [activeUploads, setActiveUploads] = useState<Set<string>>(new Set());
+  const [uploadFileIds, setUploadFileIds] = useState<string[]>([]);
 
-  const onDrop = useCallback((acceptedFiles: File[], rejectedFiles: any[]) => {
+  // Update upload file IDs when files change
+  useEffect(() => {
+    const fileIds = files.map(f => f.id);
+    setUploadFileIds(fileIds);
+  }, [files]);
+
+  const startChunkedUpload = async (file: File): Promise<string> => {
+    const options: ChunkUploadOptions = {
+      chunkSize,
+      maxRetries: 3,
+      retryDelay: 1000,
+      onProgress: (progress: ChunkUploadProgress) => {
+        // Update file status based on progress
+        const fileItem = files.find(f => f.id === progress.fileId);
+        if (fileItem) {
+          fileItem.status = progress.status === 'completed' ? 'complete' : 
+                           progress.status === 'error' ? 'error' :
+                           progress.status === 'processing' ? 'processing' :
+                           progress.status === 'paused' ? 'paused' : 'uploading';
+          fileItem.progress = progress.progress;
+          if (progress.error) {
+            fileItem.error = progress.error;
+          }
+        }
+      },
+      onComplete: (fileId: string, result: any) => {
+        setActiveUploads(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fileId);
+          return newSet;
+        });
+        onUploadComplete?.(fileId, result);
+      },
+      onError: (fileId: string, error: Error) => {
+        setActiveUploads(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(fileId);
+          return newSet;
+        });
+        onUploadError?.(fileId, error);
+      },
+    };
+
+    try {
+      const result = await chunkedUploadService.uploadFile(file, knowledgeBaseId, options);
+      return result;
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const onDrop = useCallback(async (acceptedFiles: File[], rejectedFiles: any[]) => {
     setValidationErrors([]);
     const errors: string[] = [];
 
@@ -199,9 +270,24 @@ export default function FileUploadInterface({
     }
 
     if (validFiles.length > 0) {
+      // Add files to the list first
       onFilesAdded(validFiles);
+
+      // Start chunked uploads if enabled
+      if (enableChunkedUpload) {
+        for (const file of validFiles) {
+          const fileId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+          setActiveUploads(prev => new Set(prev).add(fileId));
+          
+          try {
+            await startChunkedUpload(file);
+          } catch (error) {
+            console.error('Upload failed:', error);
+          }
+        }
+      }
     }
-  }, [files.length, maxFiles, onFilesAdded]);
+  }, [files.length, maxFiles, onFilesAdded, enableChunkedUpload, knowledgeBaseId, chunkSize]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -293,8 +379,40 @@ export default function FileUploadInterface({
         </Alert>
       )}
 
-      {/* File List */}
-      {files.length > 0 && (
+      {/* File Upload Progress */}
+      {enableChunkedUpload && uploadFileIds.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium text-gray-700">
+              File Uploads ({files.length}/{maxFiles})
+            </h4>
+            {files.some(f => f.status === 'complete') && (
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                {files.filter(f => f.status === 'complete').length} completed
+              </Badge>
+            )}
+          </div>
+          
+          <FileUploadProgress
+            fileIds={uploadFileIds}
+            onFileRemove={(fileId) => {
+              onFileRemove(fileId);
+              setUploadFileIds(prev => prev.filter(id => id !== fileId));
+            }}
+            onRetry={(fileId) => {
+              const fileItem = files.find(f => f.id === fileId);
+              if (fileItem && enableChunkedUpload) {
+                startChunkedUpload(fileItem.file);
+              }
+            }}
+            showOverallProgress={files.length > 1}
+          />
+        </div>
+      )}
+
+      {/* Legacy File List (when chunked upload is disabled) */}
+      {!enableChunkedUpload && files.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="font-medium text-gray-700">
@@ -364,6 +482,13 @@ export default function FileUploadInterface({
                         <div className="flex items-center space-x-2 text-xs text-green-600">
                           <CheckCircle2 className="h-3 w-3" />
                           <span>Ready for use</span>
+                        </div>
+                      )}
+
+                      {fileItem.status === 'paused' && (
+                        <div className="flex items-center space-x-2 text-xs text-yellow-600">
+                          <Pause className="h-3 w-3" />
+                          <span>Upload paused</span>
                         </div>
                       )}
                       

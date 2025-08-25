@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
-import { AgentTemplate } from '@/lib/agent-service';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { AgentTemplate, AgentCapabilities } from '@/lib/agent-service';
 
 // Mock localStorage
 const localStorageMock = {
@@ -20,14 +20,16 @@ describe('AgentCreationContext Logic', () => {
       name: 'Test Template',
       description: 'Test Description',
       category: 'Test',
-      capabilities: {
-        text: { enabled: true, provider: 'openai', model: 'gpt-4' },
-        voice: { enabled: false, provider: 'elevenlabs', voiceId: 'default' },
-        image: { enabled: false },
-        video: { enabled: false },
-        tools: []
+      configuration: {
+        capabilities: {
+          text: { enabled: true, provider: 'openai', model: 'gpt-4' },
+          voice: { enabled: false, provider: 'elevenlabs', voiceId: 'default' },
+          image: { enabled: false },
+          video: { enabled: false },
+          tools: []
+        }
       },
-      default_personality: {
+      personality: {
         tone: 'friendly',
         creativityLevel: 70,
         responseStyle: {
@@ -38,19 +40,35 @@ describe('AgentCreationContext Logic', () => {
         },
         systemPrompt: 'Test prompt'
       },
-      sample_conversations: [],
       rating: 4.5,
       usage_count: 100,
-      featured: true,
+      is_featured: true,
       tags: ['test'],
       created_at: '2023-01-01',
-      updated_at: '2023-01-01'
+      updated_at: '2023-01-01',
+      created_by: null,
+      customizable_fields: {},
+      customization_options: {},
+      default_config: {},
+      features: {},
+      icon: null,
+      is_active: true,
+      is_official: true,
+      is_public: true,
+      metadata: {},
+      persona_id: null,
+      preview_image: null,
+      setup_instructions: {},
+      workflow_id: null,
+      workflows: {}
     };
 
     expect(mockTemplate.id).toBe('test-template');
     expect(mockTemplate.name).toBe('Test Template');
-    expect(mockTemplate.capabilities.text.enabled).toBe(true);
-    expect(mockTemplate.default_personality.tone).toBe('friendly');
+    const capabilities = (mockTemplate.configuration as any)?.capabilities as AgentCapabilities;
+    expect(capabilities.text.enabled).toBe(true);
+    const personality = mockTemplate.personality as any;
+    expect(personality.tone).toBe('friendly');
   });
 
   it('should validate step logic correctly', () => {
@@ -77,7 +95,7 @@ describe('AgentCreationContext Logic', () => {
     expect(systemPrompt.trim().length > 0).toBe(true);
     
     // Capabilities step validation
-    expect(Object.values(capabilities).some(cap => cap.enabled)).toBe(true);
+    expect(Object.values(capabilities).some(cap => typeof cap === 'object' && cap !== null && 'enabled' in cap && cap.enabled)).toBe(true);
     
     // Channels step validation
     expect(channels.some(channel => channel.enabled)).toBe(true);

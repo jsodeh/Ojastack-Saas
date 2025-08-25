@@ -39,8 +39,10 @@ import {
   Phone,
   Eye,
   Activity,
+  Sparkles,
+  Rocket,
 } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 import { useProfile } from "@/hooks/useProfile";
 import { useAuth } from "@/lib/auth-context";
@@ -59,6 +61,12 @@ export default function DashboardOverview() {
   const [timeRange, setTimeRange] = useState("7d");
   const { user } = useAuth();
   const { profile, loading: profileLoading } = useProfile();
+  const navigate = useNavigate();
+  
+  // Check if user has completed onboarding
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(
+    () => localStorage.getItem('onboarding-completed') === 'true'
+  );
   
   // Dashboard data state
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -182,6 +190,46 @@ export default function DashboardOverview() {
         </Card>
       )}
 
+      {/* Onboarding Banner for New Users */}
+      {!hasCompletedOnboarding && stats.totalAgents === 0 && (
+        <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <Sparkles className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-blue-900">
+                    Welcome to Ojastack! 🎉
+                  </h3>
+                  <p className="text-blue-700 text-sm">
+                    Get started by creating your first AI agent or complete the setup wizard
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center space-x-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/onboarding')}
+                  className="border-blue-300 text-blue-700 hover:bg-blue-100"
+                >
+                  <Rocket className="h-4 w-4 mr-2" />
+                  Setup Wizard
+                </Button>
+                <Button
+                  onClick={() => navigate('/dashboard/agents')}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Create Agent
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
@@ -271,7 +319,7 @@ export default function DashboardOverview() {
           <CardTitle>Monthly Usage</CardTitle>
           <CardDescription>
             {profileLoading ? (
-              <div className="w-48 h-4 bg-muted animate-pulse rounded"></div>
+              <span className="inline-block w-48 h-4 bg-muted animate-pulse rounded"></span>
             ) : (
               <>
                 {stats.usageThisMonth.toLocaleString()} of{" "}

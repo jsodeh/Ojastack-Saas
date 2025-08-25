@@ -35,6 +35,7 @@ import {
   type UserAgent,
   type TemplateFilters,
   getCapabilityLabels,
+  getUserAgentCapabilityLabels,
   formatAgentStatus,
   AgentServiceError
 } from '@/lib/agent-service';
@@ -111,9 +112,8 @@ export default function AgentsPage() {
   };
 
   const handleUseTemplate = (template: AgentTemplate) => {
-    // Navigate to agent creation wizard with template
-    const searchParams = new URLSearchParams({ template: template.id });
-    window.location.href = `/dashboard/agents/create?${searchParams.toString()}`;
+    // Navigate to agent creation wizard with template using parameterized route
+    window.location.href = `/dashboard/agents/create/${template.id}`;
   };
 
   const handleCreateCustomAgent = () => {
@@ -314,7 +314,12 @@ function TemplateCard({
   onUseTemplate: (template: AgentTemplate) => void;
   style?: React.CSSProperties;
 }) {
-  const capabilities = getCapabilityLabels(template.capabilities);
+  // For templates, capabilities might be in configuration field as JSON
+  const templateConfig = template.configuration ? 
+    (typeof template.configuration === 'string' ? 
+      JSON.parse(template.configuration) : 
+      template.configuration) : {};
+  const capabilities = getCapabilityLabels(templateConfig.capabilities || null);
 
   return (
     <Card 
@@ -326,7 +331,7 @@ function TemplateCard({
           <div className="flex-1">
             <div className="flex items-center space-x-2 mb-2">
               <CardTitle className="text-lg">{template.name}</CardTitle>
-              {template.featured && (
+              {(template as any).featured && (
                 <Badge variant="secondary" className="bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700">
                   <Star className="h-3 w-3 mr-1" />
                   Featured
@@ -454,7 +459,7 @@ function AgentCard({
   style?: React.CSSProperties;
 }) {
   const status = formatAgentStatus(agent.status);
-  const capabilities = getCapabilityLabels(agent.capabilities_config);
+  const capabilities = getUserAgentCapabilityLabels(agent);
 
   return (
     <Card 
@@ -479,7 +484,7 @@ function AgentCard({
                 <span className="mr-1">{status.icon}</span>
                 {status.label}
               </Badge>
-              {agent.is_draft && (
+              {(agent as any).is_draft && (
                 <Badge variant="secondary">Draft</Badge>
               )}
             </div>
@@ -508,9 +513,9 @@ function AgentCard({
           </div>
 
           {/* Knowledge Bases */}
-          {agent.knowledge_bases.length > 0 && (
+          {agent.knowledge_base_ids && agent.knowledge_base_ids.length > 0 && (
             <div className="text-sm text-muted-foreground">
-              <span className="font-medium">{agent.knowledge_bases.length}</span> knowledge base{agent.knowledge_bases.length !== 1 ? 's' : ''} connected
+              <span className="font-medium">{agent.knowledge_base_ids.length}</span> knowledge base{agent.knowledge_base_ids.length !== 1 ? 's' : ''} connected
             </div>
           )}
 
@@ -550,7 +555,12 @@ function TemplatePreviewModal({
   onOpenChange: (open: boolean) => void;
   onUseTemplate: (template: AgentTemplate) => void;
 }) {
-  const capabilities = getCapabilityLabels(template.capabilities);
+  // For templates, capabilities might be in configuration field as JSON
+  const templateConfig = template.configuration ? 
+    (typeof template.configuration === 'string' ? 
+      JSON.parse(template.configuration) : 
+      template.configuration) : {};
+  const capabilities = getCapabilityLabels(templateConfig.capabilities || null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -563,7 +573,7 @@ function TemplatePreviewModal({
                 {template.description}
               </DialogDescription>
             </div>
-            {template.featured && (
+            {(template as any).featured && (
               <Badge className="bg-gradient-to-r from-purple-600 to-blue-600">
                 <Star className="h-3 w-3 mr-1" />
                 Featured
@@ -613,11 +623,11 @@ function TemplatePreviewModal({
           </div>
 
           {/* Sample Conversations */}
-          {template.sample_conversations && template.sample_conversations.length > 0 && (
+          {(template as any).sample_conversations && (template as any).sample_conversations.length > 0 && (
             <div>
               <h4 className="font-medium mb-3">Sample Conversation</h4>
               <div className="bg-muted/30 rounded-lg p-4 space-y-3">
-                {template.sample_conversations[0].messages.map((message, index) => (
+                {(template as any).sample_conversations[0].messages.map((message: any, index: number) => (
                   <div
                     key={index}
                     className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}

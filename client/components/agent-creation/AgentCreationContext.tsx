@@ -111,13 +111,16 @@ const initialState: AgentCreationState = {
 function agentCreationReducer(state: AgentCreationState, action: AgentCreationAction): AgentCreationState {
   switch (action.type) {
     case 'SET_TEMPLATE':
+      const template = action.payload;
+      const personality = template.personality as Partial<PersonalityConfig>;
+      const configuration = template.configuration as { capabilities: Partial<AgentCapabilities> };
       return {
         ...state,
-        template: action.payload,
-        agentName: action.payload.name,
-        agentDescription: action.payload.description,
-        personality: { ...state.personality, ...action.payload.default_personality },
-        capabilities: { ...state.capabilities, ...action.payload.capabilities },
+        template: template,
+        agentName: template.name,
+        agentDescription: template.description || '',
+        personality: { ...state.personality, ...personality },
+        capabilities: { ...state.capabilities, ...configuration.capabilities },
         hasUnsavedChanges: true
       };
       
@@ -393,11 +396,14 @@ export function AgentCreationProvider({ children }: { children: React.ReactNode 
       case 'template':
         return state.agentName.trim().length > 0;
       case 'knowledge':
-        return state.knowledgeBases.length > 0 || (state.newKnowledgeBase?.files.length || 0) > 0;
+        // Valid if user has selected existing knowledge bases OR uploaded new files
+        const hasSelectedKB = state.knowledgeBases.length > 0;
+        const hasUploadedFiles = (state.newKnowledgeBase?.files.length || 0) > 0;
+        return hasSelectedKB || hasUploadedFiles;
       case 'personality':
         return state.personality.systemPrompt.trim().length > 0;
       case 'capabilities':
-        return Object.values(state.capabilities).some(cap => cap.enabled);
+        return Object.values(state.capabilities).some(cap => typeof cap === 'object' && cap !== null && 'enabled' in cap && cap.enabled);
       case 'channels':
         return state.channels.some(channel => channel.enabled);
       case 'testing':

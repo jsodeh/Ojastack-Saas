@@ -33,6 +33,11 @@ interface AgentCreationWizardProps {
   onCancel?: () => void;
 }
 
+export interface StepProps {
+    onNext: () => void;
+    onPrevious: () => void;
+}
+
 function AgentCreationWizardContent({ template, onComplete, onCancel }: AgentCreationWizardProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -129,22 +134,23 @@ function AgentCreationWizardContent({ template, onComplete, onCancel }: AgentCre
 
   const renderStepContent = () => {
     const currentStepId = steps[state.currentStep].id;
+    const props = { onNext: handleNext, onPrevious: handlePrevious };
     
     switch (currentStepId) {
       case 'template':
-        return <TemplateSelectionStep />;
+        return <TemplateSelectionStep {...props} />;
       case 'knowledge':
-        return <KnowledgeBaseStep />;
+        return <KnowledgeBaseStep {...props} />;
       case 'personality':
-        return <PersonalityStep />;
+        return <PersonalityStep {...props} />;
       case 'capabilities':
-        return <CapabilitiesStep />;
+        return <CapabilitiesStep {...props} />;
       case 'channels':
-        return <ChannelsStep />;
+        return <ChannelsStep {...props} />;
       case 'testing':
-        return <TestingStep />;
+        return <TestingStep {...props} />;
       case 'deployment':
-        return <DeploymentStep onComplete={onComplete} />;
+        return <DeploymentStep onComplete={onComplete} {...props} />;
       default:
         return <div>Step not found</div>;
     }
